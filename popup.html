@@ -2,17 +2,49 @@
 <html>
   <head>
     <style>
-      button {
-        height: 30px;
-        width: 30px;
-        outline: none;
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 13px;
+      }
+      #status {
+          width: 400px;
+      }
+      .info, .warning, .validation, .cheated, .acceptable {
+        border: 1px solid;
+        margin: 10px 0px;
+        padding: 15px 10px 15px 50px;
+        background-repeat: no-repeat;
+        background-position: 10px center;
+      }
+      .info {
+        color: #00529B;
+        background-color: #BDE5F8;
+        background-image: url('https://i.imgur.com/ilgqWuX.png');
+      }
+      .warning {
+        color: #9F6000;
+        background-color: #FEEFB3;
+        background-image: url('https://i.imgur.com/Z8q7ww7.png');
+      }
+      .acceptable {
+        color: #4F8A10;
+        background-color: #DFF2BF;
+        background-image: url('https://i.imgur.com/Q9BGTuy.png');
+      }
+      .cheated{
+        color: #D8000C;
+        background-color: #FFBABA;
+        background-image: url('https://i.imgur.com/GnyDvKN.png');
       }
     </style>
   </head>
   <body>
-    <button id="changeColor"></button>
+    <h3>Did UberEats steal from me?</h3>
+    <i>Uber <a href="https://www.reddit.com/r/UberEATS/comments/i2jyyj/14_emails_and_126_minutes_on_the_phone_later_uber/">has admitted</a> to systematically underpaying delivery drivers and bikers. Find out how much you've been underpaid on each trip.</i>
+
+    <div class="info" id="status">Initializing...</div>
+
     <script src="popup.js" defer></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA3ZbHa1nT0-WgfiY6HG11Lw2JhT4q3nFA&callback=googleAPiFinishedLoadingCallback" defer></script>
 
   </body>
 </html>

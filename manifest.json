@@ -2,7 +2,7 @@
     "name": "Did UberEats steal from me?",
     "version": "0.1",
     "description": "UberEats has admitted to a systematic bug that miscalculates payments. This extension will try to detect when Uber has done this, and provide advice on how to fix it.",
-    "permissions": ["activeTab", "declarativeContent", "storage"],
+    "permissions": ["activeTab", "declarativeContent", "storage", "webNavigation", "tabs", "*://drivers.uber.com/p3/payments/v2/trips/*"],
     "background": {
         "scripts": ["background.js"],
         "persistent": false
@@ -15,18 +15,10 @@
 	],
     "page_action": {
         "default_popup": "popup.html",
-        "default_icon": {
-            "16": "images/get_started16.png",
-            "32": "images/get_started32.png",
-            "48": "images/get_started48.png",
-            "128": "images/get_started128.png"
-        }
+        "default_icon": "icons/default.png"
     },
     "icons": {
-        "16": "images/get_started16.png",
-        "32": "images/get_started32.png",
-        "48": "images/get_started48.png",
-        "128": "images/get_started128.png"
+        "128": "icons/default.png"
     },
     "content_security_policy": "script-src 'self' https://maps.googleapis.com; object-src 'self'",
     "manifest_version": 2
