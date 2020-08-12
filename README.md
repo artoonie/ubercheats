@@ -1,6 +1,7 @@
 I discovered that UberEATS systematically underpays its drivers regularly. After 14 emails and 126 minutes on the phone, they finally admitted to this on the record: 
 
 [![Watch the video](static/uberscreenshots.png)](https://www.youtube.com/watch?v=rhDbcIO4Fe8)
+(click to hear the audio of the admission)
 
 This is a Chrome Extension which allows you to detect when UberEATS has underpaid you.
 
