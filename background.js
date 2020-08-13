@@ -43,9 +43,10 @@ function _setStatus(className, text, tabId) {
 
 // Sets an error message
 function setError(errorMessage, tabId) {
-  let text = "Encountered an error.<br/>";
+  setIcon('error.png', tabId);
+  let text = "<strong>Encountered an error.</strong><br/>";
   text += errorMessage;
-  text += "Please contact the developer at ubercheats@arminsamii.com to address this.";
+  text += "<br/><br/>Please contact the developer at ubercheats@arminsamii.com to address this.";
   _setStatus('warning', text, tabId)
 }
 
@@ -159,10 +160,9 @@ function callbackDirectionsComplete(response, status, uberPaidForDistance, tabId
 }
 
 // Callback for when the content-script finished running and returned data from the page
-function callbackFinishedReadingPage(tabId, dataFromContentScript) {
+function callbackFinishedReadingPage(tabId, result) {
   setIcon("loading128.gif", tabId)
 
-  let result = dataFromContentScript[0];
   let pickupLatLon = result['pickupLatLon'];
   let dropoffLatLon = result['dropoffLatLon'];
   let uberPaidForDistance = result['uberPaidForDistance']
@@ -175,7 +175,18 @@ function runCheatDetector(tabId) {
       tabId,
       {file: 'contentScript.js'},
       function(result) {
-        callbackFinishedReadingPage(tabId, result);
+        let returnValue = result[0];
+        if (!returnValue ||
+            !returnValue.pickupLatLon ||
+            !returnValue.dropoffLatLon ||
+            !returnValue.uberPaidForDistance) {
+          let errorMessage = "Could not find the data we were looking for on this page. "
+          errorMessage += "If you're okay with it, can you hit Ctrl+S to save the page data, "
+          errorMessage += "then attach it in an email to the developer?"
+          setError(errorMessage, tabId)
+        } else {
+          callbackFinishedReadingPage(tabId, returnValue);
+        }
       }
   )
 }

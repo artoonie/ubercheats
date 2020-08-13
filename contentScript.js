@@ -15,7 +15,6 @@ function getLatLonFor(pinImageSource, googleMapsImageSource) {
 // of the pickup and dropoff locations.
 function computePickupDropoff()
 {
-  console.log("Computing pickup dropoff coords");
   images = document.getElementsByTagName('img')
   let i;
   let googleimage;
@@ -33,7 +32,6 @@ function computePickupDropoff()
   var pickupLatLon = getLatLonFor('car-pickup-pin.png', imagesource);
   var dropoffLatLon = getLatLonFor('car-dropoff-pin.png', imagesource);
 
-  console.log("Returning " + [pickupLatLon, dropoffLatLon])
   return [pickupLatLon, dropoffLatLon]
 }
 
@@ -42,11 +40,40 @@ function getElementByXpath(path) {
   return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 }
 
-// Read the Uber site for the distance, using this magic xpath
+// Read the Uber site for the distance
 function readUberPaidForDistance()
 {
+  // First, try the xpath that works for me
   element = getElementByXpath('//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]')
-  return element.innerHTML;
+
+  // If that doesn't work, try getting the second element by the class name
+  if (!element)
+  {
+    durationAndDistanceElements = document.getElementsByClassName('cu cv');
+    if (durationAndDistanceElements.length == 2)
+    {
+      element = durationAndDistanceElements[1];
+    }
+  }
+
+  // If that doesn't work, try parsing the entire page for e.g. Distance[...]5.5 mi
+  if (!element)
+  {
+    let rootElement = document.getElementById('root').innerHTML;
+    let regex = /Distance[^0-9]*([0-9]*\.?[0-9]*) (mi|km)/g
+    let matches = regex.exec(rootElement)
+    if (matches)
+    {
+      // Return distance + space + mi/km
+      return matches[1] + " " + matches[2];
+    }
+  }
+
+  if (element) {
+    return element.innerHTML;
+  } else {
+    return null;
+  }
 }
 
 // Compute and return all data
@@ -54,6 +81,7 @@ function getAllData()
 {
   pickupDropoff = computePickupDropoff();
   uberPaidForDistance = readUberPaidForDistance();
+
   return {
     'pickupLatLon': pickupDropoff[0],
     'dropoffLatLon': pickupDropoff[1],

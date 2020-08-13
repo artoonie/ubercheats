@@ -12,7 +12,12 @@ window.onload = function() {
     let tabId = tabs[0].id;
     let key = "tab" + tabId;
     chrome.storage.local.get(key, function(data) {
-      _setStatus(data[key].className, data[key].text);
+      let status = data[key];
+      if (!status)
+      {
+        return;
+      }
+      _setStatus(status.className, status.text);
     });
   });
 };
