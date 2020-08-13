@@ -45,7 +45,7 @@ function _setStatus(className, text, tabId) {
 function setError(errorMessage, tabId) {
   let text = "Encountered an error.<br/>";
   text += errorMessage;
-  text += "Please contact the developer at team@rcvis.com/*TODO*/ to address this.";
+  text += "Please contact the developer at ubercheats@arminsamii.com to address this.";
   _setStatus('warning', text, tabId)
 }
 
