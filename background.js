@@ -136,9 +136,26 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
 
   var actualFloat = parseFloat(actualMatch[1])
   var uberPaidFloat = parseFloat(uberMatch[1])
+
+  // Standardize to miles
+  var googleUnits = actualMatch[2]
+  var uberUnits = actualMatch[2]
+  if (uberUnits == 'km')
+  {
+    uberPaidFloat *= 0.621371;
+  }
+  if (googleUnits == 'km')
+  {
+    actualFloat *= 0.621371;
+  }
+
+  var percentDiff = (actualFloat - uberPaidFloat) / actualFloat
+  ga('send', 'event', 'fairness', 'difference', 'absoluteTimes100', Math.round((actualFloat - uberPaidFloat) * 100));
+  ga('send', 'event', 'fairness', 'difference', 'percent', Math.round(percentDiff*100));
+
   if (actualFloat <= uberPaidFloat) {
     setAcceptable("As best I can tell, you were paid fairly.", tabId);
-  } else if ((actualFloat - uberPaidFloat) / actualFloat < 0.10) {
+  } else if (percentDiff < 0.10) {
     setAcceptable("You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.", tabId);
   } else {
     let helpUrl = "https://www.reddit.com/r/UberEATS/comments/i2jyyj/14_emails_and_126_minutes_on_the_phone_later_uber/"
