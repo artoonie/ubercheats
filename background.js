@@ -1,5 +1,16 @@
 'use strict';
 
+// Standard Google Universal Analytics code
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','https://www.google-analytics.com/analytics.js','ga'); // Note: https protocol here
+window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+ga('create', 'UA-175307097-1', 'auto');
+ga('set', 'checkProtocolTask', function(){}); // Removes failing protocol check. @see: http://stackoverflow.com/a/22152353/1958200
+ga('require', 'displayfeatures');
+ga('send', 'pageview', 'background');
+
 var isGoogleAPILoaded = false;
 
 // This happens fairly quickly, but we still need a safeguard in case the API fails to load
@@ -169,6 +180,43 @@ function callbackFinishedReadingPage(tabId, result) {
   queryGoogleForDistance(pickupLatLon, dropoffLatLon, uberPaidForDistance, tabId);
 }
 
+function handleAnalyticsFromContentScript(returnValue) {
+  if (!returnValue)
+  {
+    ga('send', 'event', 'howWasUberPaidFound', 'errorInParsing');
+  } else {
+    ga('send', 'event', 'howWasUberPaidFound', returnValue.howUberPaidForWasFound);
+  }
+}
+
+// Returns true if there were errors
+function handleErrorsFromContentScript(tabId, returnValue) {
+  let errorMessage = "Could not find the data we were looking for on this page. "
+  errorMessage += "If you're okay with it, can you hit Ctrl+S to save the page data, "
+  errorMessage += "then attach it in an email to the developer, along with this message:"
+  errorMessage += "<br/><br/>"
+  
+  let wereThereErrors = false;
+  if (!returnValue) {
+    errorMessage += "\"Failed to parse anything\""
+    wereThereErrors = true;
+  } else {
+    if (!returnValue.pickupLatLon || !returnValue.dropoffLatLon) {
+      errorMessage += "\"Failed to parse the pickup/dropoff locations\""
+      wereThereErrors = true;
+    } else if (!returnValue.uberPaidForDistance) {
+      errorMessage += "\"Failed to parse the distance\""
+      wereThereErrors = true;
+    }
+  }
+
+  if (wereThereErrors) {
+    setError(errorMessage, tabId);
+  }
+
+  return wereThereErrors;
+}
+
 // Runs the end-to-end cheat detector
 function runCheatDetector(tabId) {
   chrome.tabs.executeScript(
@@ -176,15 +224,10 @@ function runCheatDetector(tabId) {
       {file: 'contentScript.js'},
       function(result) {
         let returnValue = result[0];
-        if (!returnValue ||
-            !returnValue.pickupLatLon ||
-            !returnValue.dropoffLatLon ||
-            !returnValue.uberPaidForDistance) {
-          let errorMessage = "Could not find the data we were looking for on this page. "
-          errorMessage += "If you're okay with it, can you hit Ctrl+S to save the page data, "
-          errorMessage += "then attach it in an email to the developer?"
-          setError(errorMessage, tabId)
-        } else {
+
+        handleAnalyticsFromContentScript(returnValue);
+        let wereThereErrors = handleErrorsFromContentScript(tabId, returnValue);
+        if (!wereThereErrors) {
           callbackFinishedReadingPage(tabId, returnValue);
         }
       }

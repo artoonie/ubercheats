@@ -41,51 +41,51 @@ function getElementByXpath(path) {
 }
 
 // Read the Uber site for the distance
+// Returns a tuple, first the data, second how the data was found for tracking
 function readUberPaidForDistance()
 {
   // First, try the xpath that works for me
-  element = getElementByXpath('//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]')
+  let element = getElementByXpath('//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]')
+  if (element)
+  {
+    return [element.innerHTML, 'by-xpath'];
+  }
 
   // If that doesn't work, try getting the second element by the class name
-  if (!element)
+  durationAndDistanceElements = document.getElementsByClassName('cu cv');
+  if (durationAndDistanceElements.length == 2)
   {
-    durationAndDistanceElements = document.getElementsByClassName('cu cv');
-    if (durationAndDistanceElements.length == 2)
+    element = durationAndDistanceElements[1];
+	if (element)
     {
-      element = durationAndDistanceElements[1];
+      return [element.innerHTML, 'by-classname'];
     }
   }
 
   // If that doesn't work, try parsing the entire page for e.g. Distance[...]5.5 mi
-  if (!element)
+  let rootElement = document.getElementById('root').innerHTML;
+  let regex = /Distance[^0-9]*([0-9]*\.?[0-9]*) (mi|km)/g
+  let matches = regex.exec(rootElement)
+  if (matches)
   {
-    let rootElement = document.getElementById('root').innerHTML;
-    let regex = /Distance[^0-9]*([0-9]*\.?[0-9]*) (mi|km)/g
-    let matches = regex.exec(rootElement)
-    if (matches)
-    {
-      // Return distance + space + mi/km
-      return matches[1] + " " + matches[2];
-    }
+    // Return distance + space + mi/km
+    return [matches[1] + " " + matches[2], 'by-regex']
   }
 
-  if (element) {
-    return element.innerHTML;
-  } else {
-    return null;
-  }
+  return [null, 'wasnt-found'];
 }
 
 // Compute and return all data
 function getAllData()
 {
-  pickupDropoff = computePickupDropoff();
-  uberPaidForDistance = readUberPaidForDistance();
+  let pickupDropoff = computePickupDropoff();
+  let uberPaidForDistanceTuple = readUberPaidForDistance();
 
   return {
     'pickupLatLon': pickupDropoff[0],
     'dropoffLatLon': pickupDropoff[1],
-    'uberPaidForDistance': uberPaidForDistance
+    'uberPaidForDistance': uberPaidForDistanceTuple[0],
+    'howUberPaidForWasFound': uberPaidForDistanceTuple[1],
   }
 }
 // This gets returned to the executor
