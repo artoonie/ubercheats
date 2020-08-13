@@ -2,10 +2,15 @@
 
 var isGoogleAPILoaded = false;
 
+// This happens fairly quickly, but we still need a safeguard in case the API fails to load
+// Once its reloaded, clear the localstorage cache.
 function googleApiIsLoaded() {
   isGoogleAPILoaded = true;
+
+  chrome.storage.local.clear();
 }
 
+// Adds the Google Maps API script to the <head> tag to load it
 function addScriptTagToHead() {
   // Create the script tag, set the appropriate attributes
   var script = document.createElement('script');
@@ -16,6 +21,7 @@ function addScriptTagToHead() {
   document.head.appendChild(script);
 }
 
+// Sets the extension icon
 function setIcon(iconName, tabId) {
   chrome.pageAction.setIcon({
       path: "icons/" + iconName,
@@ -24,32 +30,43 @@ function setIcon(iconName, tabId) {
 }
 
 // Sets the status using the storage API to pass it to the popup
-function _setStatus(className, text) {
-  let status = {className: className, text: text};
-  chrome.storage.sync.set({popupStatus: status});
+function _setStatus(className, text, tabId) {
+  let status = {
+    className: className,
+    text: text
+  };
+  let key = "tab" + tabId;
+  let storedObject = {}
+  storedObject[key] = status
+  chrome.storage.local.set(storedObject);
 }
 
-function setError(errorMessage) {
-  text = "Encountered an error.<br/>";
+// Sets an error message
+function setError(errorMessage, tabId) {
+  let text = "Encountered an error.<br/>";
   text += errorMessage;
   text += "Please contact the developer at team@rcvis.com/*TODO*/ to address this.";
-  _setStatus('warning', text)
+  _setStatus('warning', text, tabId)
 }
 
-function setInfo(message) {
-  _setStatus('info', message)
+// Sets an info message
+function setInfo(message, tabId) {
+  _setStatus('info', message, tabId)
 }
 
+// Sets a message signifying UberEats paid you fairly
 function setAcceptable(message, tabId) {
   setIcon("acceptable.png", tabId);
-  _setStatus('acceptable', message)
+  _setStatus('acceptable', message, tabId)
 }
 
+// Sets a message signifying UberEats underpaid you
 function setCheated(message, tabId) {
   setIcon("cheated.png", tabId);
-  _setStatus('cheated', message)
+  _setStatus('cheated', message, tabId)
 }
 
+// Gets the lat/lon coordinates given a Google Maps API URL
 function getLatLonFor(pinImageSource, googleMapsImageSource) {
   var numberRegex = "[-]?[0-9]*"
   var latOrLonRegex = "(" + numberRegex + "." + numberRegex + ")"
@@ -61,12 +78,14 @@ function getLatLonFor(pinImageSource, googleMapsImageSource) {
   return [pickupLatitude, pickupLongitude]
 }
 
+// Queries Google Maps for the distance between the start and end points,
+// then asynchronously compares that value to what UberEats paid you for
 function queryGoogleForDistance(startLatLon, endLatLon, uberPaidForDistance, tabId) {
   let directionsService = new google.maps.DirectionsService();
   let start = new google.maps.LatLng(parseFloat(startLatLon[0]), parseFloat(startLatLon[1]));
   let end = new google.maps.LatLng(parseFloat(endLatLon[0]), parseFloat(endLatLon[1]));
 
-  setInfo("Reaching out to Google to compute the distance between " + start + " and " + end);
+  setInfo("Reaching out to Google to compute the distance between " + start + " and " + end, tabId);
 
   const route = {
     origin: start,
@@ -79,8 +98,10 @@ function queryGoogleForDistance(startLatLon, endLatLon, uberPaidForDistance, tab
   });
 }
 
+// Compares the actual distance to what Uber paid, and lets you know if it wasn't fair
+// Fair is defined as a difference of more than 10%
 function compareDistances(actualDistance, uberPaidForDistance, tabId) {
-  var mileageRegex = new RegExp("([0-9]*[.][0-9]*) (mi|km)", "g");
+  var mileageRegex = new RegExp("([0-9]*\.?[0-9]*) (mi|km)", "g");
   
   // Get the uber match
   var uberMatch = mileageRegex.exec(uberPaidForDistance);
@@ -92,36 +113,41 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
   // Error handling: This shouldn't happen.
   if (!actualMatch || !uberMatch || actualMatch.length < 2 || uberMatch.length < 2)
   {
-    setError("Could not parse mileages:\n" +
-             "\nactual=" + actualDistance +
-             "\nuber paid for=" + uberPaidForDistance +
-             "\nactual match=" + actualMatch +
-             "\nuber match=" + uberMatch);
+    setError("Could not parse mileages:<br/>" +
+             "<br/>actual=" + actualDistance +
+             "<br/>uber paid for=" + uberPaidForDistance +
+             "<br/>actual match=" + actualMatch +
+             "<br/>uber match=" + uberMatch,
+             tabId);
     return;
   }
 
   var actualFloat = parseFloat(actualMatch[1])
   var uberPaidFloat = parseFloat(uberMatch[1])
-  if (actualFloat <= uberPaidFloat) 
-  {
+  if (actualFloat <= uberPaidFloat) {
     setAcceptable("As best I can tell, you were paid fairly.", tabId);
-  }
-  else
-  {
-    setCheated("Uber paid you for " + uberPaidForDistance + " but you actually drove for " + actualDistance, tabId);
+  } else if ((actualFloat - uberPaidFloat) / actualFloat < 0.10) {
+    setAcceptable("You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.", tabId);
+  } else {
+    let helpUrl = "https://www.reddit.com/r/UberEATS/comments/i2jyyj/14_emails_and_126_minutes_on_the_phone_later_uber/"
+    let text = "Uber paid you for " + uberPaidForDistance + " but the travel distance was actually " + actualDistance + ".<br/><br/>"
+    text += "<br/>Want to do something about it? Call UberEATS support, ask for a supervisor, and explain that you were underpaid."
+    text += "<br/>If you need advice getting paid fairly, reach out on the <a href=\"" + helpUrl + "\" target=\"_blank\">reddit thread</a>."
+    setCheated(text, tabId);
   }
 }
 
+// Callback for when the Google Maps API returns directions
 function callbackDirectionsComplete(response, status, uberPaidForDistance, tabId) {
-  setInfo("Directions request received from google.")
+  setInfo("Directions request received from google.", tabId)
 
   if (status !== 'OK') {
-    setError('Directions request failed due to ' + status);
+    setError('Directions request failed due to ' + status, tabId);
     return -1;
   } else {
     let directionsData = response.routes[0].legs[0]; // Get data about the mapped route
     if (!directionsData) {
-      setError('Directions request failed');
+      setError('Directions request failed', tabId);
       return -1;
     }
     else {
@@ -132,6 +158,7 @@ function callbackDirectionsComplete(response, status, uberPaidForDistance, tabId
   }
 }
 
+// Callback for when the content-script finished running and returned data from the page
 function callbackFinishedReadingPage(tabId, dataFromContentScript) {
   setIcon("loading128.gif", tabId)
 
@@ -142,6 +169,7 @@ function callbackFinishedReadingPage(tabId, dataFromContentScript) {
   queryGoogleForDistance(pickupLatLon, dropoffLatLon, uberPaidForDistance, tabId);
 }
 
+// Runs the end-to-end cheat detector
 function runCheatDetector(tabId) {
   chrome.tabs.executeScript(
       tabId,
@@ -152,27 +180,16 @@ function runCheatDetector(tabId) {
   )
 }
 
-chrome.runtime.onInstalled.addListener(function() {
-  chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
-    chrome.declarativeContent.onPageChanged.addRules([{
-      conditions: [new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: {hostEquals: 'drivers.uber.com'},
-      })
-      ],
-          actions: [new chrome.declarativeContent.ShowPageAction()]
-    }]);
-  });
-});
-
+// Adds a listener for a page load on the Uber payments page
 chrome.webNavigation.onCompleted.addListener(
   function(details) {
+    var tabId = details.tabId;
     if (!isGoogleAPILoaded)
     {
-      setError("Please wait...the Google Maps API has not yet loaded")
+      setError("Please wait...the Google Maps API has not yet loaded", tabId)
       return;
     }
 
-    var tabId = details.tabId;
     runCheatDetector(tabId)
   }, {
   url: [

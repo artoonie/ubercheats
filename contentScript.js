@@ -42,12 +42,14 @@ function getElementByXpath(path) {
   return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 }
 
+// Read the Uber site for the distance, using this magic xpath
 function readUberPaidForDistance()
 {
   element = getElementByXpath('//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]')
   return element.innerHTML;
 }
 
+// Compute and return all data
 function getAllData()
 {
   pickupDropoff = computePickupDropoff();

@@ -1,8 +1,8 @@
   {
-    "name": "Did UberEats steal from me?",
+    "name": "UberCheats",
     "version": "0.1",
     "description": "UberEats has admitted to a systematic bug that miscalculates payments. This extension will try to detect when Uber has done this, and provide advice on how to fix it.",
-    "permissions": ["activeTab", "declarativeContent", "storage", "webNavigation", "tabs", "*://drivers.uber.com/p3/payments/v2/trips/*"],
+    "permissions": ["activeTab", "declarativeContent", "storage", "webNavigation", "*://drivers.uber.com/p3/payments/v2/trips/*"],
     "background": {
         "scripts": ["background.js"],
         "persistent": false
