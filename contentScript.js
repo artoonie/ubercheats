@@ -56,13 +56,13 @@ function readUberPaidForDistance()
   if (durationAndDistanceElements.length == 2)
   {
     element = durationAndDistanceElements[1];
-	if (element)
+    if (element)
     {
       return [element.innerHTML, 'by-classname'];
     }
   }
 
-  // If that doesn't work, try parsing the entire page for e.g. Distance[...]5.5 mi
+  // If that doesn't work, try parsing the entire page for e.g. "Distance[...]5.5 mi"
   let rootElement = document.getElementById('root').innerHTML;
   let regex = /Distance[^0-9]*([0-9]*\.?[0-9]*) (mi|km)/g
   let matches = regex.exec(rootElement)
@@ -70,6 +70,17 @@ function readUberPaidForDistance()
   {
     // Return distance + space + mi/km
     return [matches[1] + " " + matches[2], 'by-regex']
+  }
+
+  // If that doesn't work, just look for "5.5 mi"...this could
+  // more easily appear in other formats, but doesn't, so
+  // this should be fine as a fallback.
+  regex = /[^0-9]([0-9]+\.?[0-9]*)\s+(mi|km)/g
+  matches = regex.exec(rootElement)
+  if (matches)
+  {
+    // Return distance + space + mi/km
+    return [matches[1] + " " + matches[2], 'by-dangerous-regex']
   }
 
   return [null, 'wasnt-found'];
