@@ -150,8 +150,8 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
   }
 
   var percentDiff = (actualFloat - uberPaidFloat) / actualFloat
-  ga('send', 'event', 'fairness', 'difference', 'absoluteTimes100', Math.round((actualFloat - uberPaidFloat) * 100));
-  ga('send', 'event', 'fairness', 'difference', 'percent', Math.round(percentDiff*100));
+  ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', Math.round((actualFloat - uberPaidFloat) * 100));
+  ga('send', 'event', 'fairness', 'percentDifference', Math.round(percentDiff*100));
 
   if (actualFloat <= uberPaidFloat) {
     setAcceptable("As best I can tell, you were paid fairly.", tabId);
