@@ -44,6 +44,24 @@ function getElementByXpath(path) {
 // Returns a tuple, first the data, second how the data was found for tracking
 function readUberPaidForDistance()
 {
+  // First, try the xpath that works for me
+  let element = getElementByXpath(`//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]`)
+  if (element)
+  {
+    return [element.innerHTML, 'by-xpath'];
+  }
+
+  // If that doesn't work, try getting the second element by the class name
+  durationAndDistanceElements = document.getElementsByClassName('cu cv');
+  if (durationAndDistanceElements.length == 2)
+  {
+    element = durationAndDistanceElements[1];
+    if (element)
+    {
+      return [element.innerHTML, 'by-classname'];
+    }
+  }
+
   // If that doesn't work, try parsing the entire page
   let rootElement = document.documentElement.innerHTML;
   if (rootElement.length < 100) {
@@ -58,7 +76,6 @@ function readUberPaidForDistance()
     // Return distance + space + mi/km
     return [matches[1] + ` ` + matches[2], 'by-regex']
   }
-
   // If that doesn't work, just look for "5.5 mi"...this could
   // more easily appear in other formats, but doesn't, so
   // this should be fine as a fallback.
@@ -69,6 +86,7 @@ function readUberPaidForDistance()
     // Return distance + space + mi/km
     return [matches[1] + ` ` + matches[2], 'by-dangerous-regex']
   }
+
 
   return [null, 'wasnt-found'];
 }
