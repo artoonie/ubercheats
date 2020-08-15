@@ -44,26 +44,13 @@ function getElementByXpath(path) {
 // Returns a tuple, first the data, second how the data was found for tracking
 function readUberPaidForDistance()
 {
-  // First, try the xpath that works for me
-  let element = getElementByXpath(`//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]`)
-  if (element)
-  {
-    return [element.innerHTML, 'by-xpath'];
-  }
-
-  // If that doesn't work, try getting the second element by the class name
-  durationAndDistanceElements = document.getElementsByClassName('cu cv');
-  if (durationAndDistanceElements.length == 2)
-  {
-    element = durationAndDistanceElements[1];
-    if (element)
-    {
-      return [element.innerHTML, 'by-classname'];
-    }
-  }
-
-  // If that doesn't work, try parsing the entire page for e.g. "Distance[...]5.5 mi"
+  // If that doesn't work, try parsing the entire page
   let rootElement = document.documentElement.innerHTML;
+  if (rootElement.length < 100) {
+      return [null, 'no-root-element']
+  }
+
+  // First look for for e.g. "Distance[...]5.5 mi"
   let regex = /Distance[^0-9]*([0-9]*\.?[0-9]*) (mi|km)/g
   let matches = regex.exec(rootElement)
   if (matches)
@@ -101,4 +88,3 @@ function getAllData()
 }
 // This gets returned to the executor
 getAllData();
-

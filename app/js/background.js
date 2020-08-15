@@ -238,7 +238,10 @@ function handleErrorsFromContentScript(tabId, returnValue) {
 function runCheatDetector(tabId) {
   chrome.tabs.executeScript(
       tabId,
-      {file: 'js/contentScript.js'},
+      {
+       file: 'js/contentScript.js',
+       runAt: 'document_idle'
+      },
       function(result) {
         let returnValue = result[0];
 
@@ -261,7 +264,8 @@ chrome.webNavigation.onCompleted.addListener(
       return;
     }
 
-    runCheatDetector(tabId)
+    setIcon('loading128.gif', tabId);
+    runCheatDetector(tabId);
   }, {
   url: [
     {
