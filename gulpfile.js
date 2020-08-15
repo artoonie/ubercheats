@@ -43,9 +43,9 @@ function images() {
     .pipe(newer('./_site/assets/img'))
     .pipe(
       imagemin([
-        imagemin.gifsicle({ interlaced: true }),
+//        imagemin.gifsicle({ interlaced: true }),
         imagemin.mozjpeg({ progressive: true }),
-        imagemin.optipng({ optimizationLevel: 5 }),
+//        imagemin.optipng({ optimizationLevel: 5 }),
         imagemin.svgo({
           plugins: [
             {

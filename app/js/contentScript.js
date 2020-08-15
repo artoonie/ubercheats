@@ -2,7 +2,7 @@
 // pinImageSource is either car-pickup-pin.png or car-dropoff-pin.png
 function getLatLonFor(pinImageSource, googleMapsImageSource) {
   var numberRegex = '[-]?[0-9]*'
-  var latOrLonRegex = `(" + numberRegex + "." + numberRegex + ")`
+  var latOrLonRegex = '(' + numberRegex + '.' + numberRegex + ')'
   var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex
   var pickupRegex = new RegExp(pinImageSource + '%7Cscale%3A2%7C' + latAndLonRegex, 'g');
   var match = pickupRegex.exec(googleMapsImageSource)
