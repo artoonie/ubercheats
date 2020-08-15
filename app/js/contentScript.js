@@ -17,7 +17,7 @@ function computePickupDropoff()
 {
   images = document.getElementsByTagName('img')
   let i;
-  let googleimage;
+  let googleimage = [];
   for (i = 0; i < images.length; i++) {
     if (images[i]['src'].includes('https://maps.googleapis.com')) {
   	  googleimage = images[i];
@@ -101,3 +101,4 @@ function getAllData()
 }
 // This gets returned to the executor
 getAllData();
+

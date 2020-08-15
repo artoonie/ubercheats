@@ -17,10 +17,23 @@ const sass = require('gulp-sass');
 const webpack = require('webpack');
 const webpackconfig = require('./webpack.config.js');
 const webpackstream = require('webpack-stream');
+const jest = require('gulp-jest').default;
 
 // Clean assets
 function clean() {
   return del(['./_site/assets/']);
+}
+
+// Test
+function test() {
+    return gulp.src('./test').pipe(jest({
+      'preprocessorIgnorePatterns': [
+        '<rootDir>/dist/', '<rootDir>/node_modules/'
+      ],
+      'automock': false,
+      'coverage': true,
+      'type': 'module'
+    }));
 }
 
 // Optimize Images
@@ -96,7 +109,7 @@ function chromefiles() {
 
 // define complex tasks
 const js = gulp.series(scriptsLint, scripts);
-const build = gulp.series(clean, gulp.parallel(chromefiles, css, images, js));
+const build = gulp.series(clean, test, gulp.parallel(chromefiles, css, images, js));
 const pack = gulp.series(clean, build, zip_package)
 
 // export tasks
@@ -107,3 +120,4 @@ exports.clean = clean;
 exports.build = build;
 exports.default = build;
 exports.package = pack
+exports.test = test
