@@ -63,7 +63,7 @@ function readUberPaidForDistance()
   }
 
   // If that doesn't work, try parsing the entire page for e.g. "Distance[...]5.5 mi"
-  let rootElement = document.getElementById('root').innerHTML;
+  let rootElement = document.documentElement.innerHTML;
   let regex = /Distance[^0-9]*([0-9]*\.?[0-9]*) (mi|km)/g
   let matches = regex.exec(rootElement)
   if (matches)
