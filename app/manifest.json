@@ -15,10 +15,10 @@
   ],
   "page_action": {
     "default_popup": "popup.html",
-    "default_icon": "img/icons/default.png"
+    "default_icon": "icons/default.png"
   },
   "icons": {
-    "128": "img/icons/default.png"
+    "128": "icons/default.png"
   },
   "content_security_policy": "script-src 'self' https://maps.googleapis.com https://www.google-analytics.com; object-src 'self';",
   "manifest_version": 2

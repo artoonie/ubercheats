@@ -35,7 +35,7 @@ function addScriptTagToHead() {
 // Sets the extension icon
 function setIcon(iconName, tabId) {
   chrome.pageAction.setIcon({
-      path: 'img/icons/' + iconName,
+      path: 'icons/' + iconName,
       tabId: tabId
   });
 }
@@ -238,7 +238,7 @@ function handleErrorsFromContentScript(tabId, returnValue) {
 function runCheatDetector(tabId) {
   chrome.tabs.executeScript(
       tabId,
-      {file: 'contentScript.js'},
+      {file: 'js/contentScript.js'},
       function(result) {
         let returnValue = result[0];
 
