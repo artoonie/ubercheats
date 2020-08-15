@@ -1,10 +1,10 @@
 // Returns the latitude/longitude given a google maps image URL
 // pinImageSource is either car-pickup-pin.png or car-dropoff-pin.png
 function getLatLonFor(pinImageSource, googleMapsImageSource) {
-  var numberRegex = "[-]?[0-9]*"
-  var latOrLonRegex = "(" + numberRegex + "." + numberRegex + ")"
-  var latAndLonRegex = latOrLonRegex + "%2C" + latOrLonRegex
-  var pickupRegex = new RegExp(pinImageSource + "%7Cscale%3A2%7C" + latAndLonRegex, "g");
+  var numberRegex = '[-]?[0-9]*'
+  var latOrLonRegex = `(" + numberRegex + "." + numberRegex + ")`
+  var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex
+  var pickupRegex = new RegExp(pinImageSource + '%7Cscale%3A2%7C' + latAndLonRegex, 'g');
   var match = pickupRegex.exec(googleMapsImageSource)
   var pickupLatitude = match[1]
   var pickupLongitude = match[2]
@@ -45,7 +45,7 @@ function getElementByXpath(path) {
 function readUberPaidForDistance()
 {
   // First, try the xpath that works for me
-  let element = getElementByXpath('//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]')
+  let element = getElementByXpath(`//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]`)
   if (element)
   {
     return [element.innerHTML, 'by-xpath'];
@@ -69,7 +69,7 @@ function readUberPaidForDistance()
   if (matches)
   {
     // Return distance + space + mi/km
-    return [matches[1] + " " + matches[2], 'by-regex']
+    return [matches[1] + ` ` + matches[2], 'by-regex']
   }
 
   // If that doesn't work, just look for "5.5 mi"...this could
@@ -80,7 +80,7 @@ function readUberPaidForDistance()
   if (matches)
   {
     // Return distance + space + mi/km
-    return [matches[1] + " " + matches[2], 'by-dangerous-regex']
+    return [matches[1] + ` ` + matches[2], 'by-dangerous-regex']
   }
 
   return [null, 'wasnt-found'];

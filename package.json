@@ -1,0 +1,50 @@
+{
+  "name": "ubercheats",
+  "private": true,
+  "engines": {
+    "node": ">=0.8.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^9.8.6",
+    "babel-eslint": "^10.1.0",
+    "browser-sync": "^2.26.12",
+    "child_process": "^1.0.2",
+    "cssnano": "^4.1.10",
+    "del": "^5.1.0",
+    "gulp": "^4.0.2",
+    "gulp-clean": "^0.4.0",
+    "gulp-eslint": "^6.0.0",
+    "gulp-imagemin": "^7.1.0",
+    "gulp-newer": "^1.4.0",
+    "gulp-plumber": "^1.2.1",
+    "gulp-postcss": "^8.0.0",
+    "gulp-rename": "^2.0.0",
+    "gulp-sass": "^4.1.0",
+    "gulp-zip": "^5.0.2",
+    "path": "^0.12.7",
+    "webpack": "^4.44.1",
+    "webpack-stream": "^5.2.1"
+  },
+  "eslintConfig": {
+    "env": {
+      "es6": true,
+      "node": true,
+      "browser": true
+    },
+    "globals": {
+      "chrome": true
+    },
+    "parser": "babel-eslint",
+    "parserOptions": {
+      "ecmaVersion": 8
+    },
+    "rules": {
+      "eol-last": 0,
+      "quotes": [
+        2,
+        "single",
+        {"allowTemplateLiterals": true }
+      ]
+    }
+  }
+}

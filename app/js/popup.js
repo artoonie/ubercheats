@@ -10,7 +10,7 @@ window.onload = function() {
   let activeTabQuery = { active: true, currentWindow: true };
   chrome.tabs.query(activeTabQuery, function(tabs) {
     let tabId = tabs[0].id;
-    let key = "tab" + tabId;
+    let key = 'tab' + tabId;
     chrome.storage.local.get(key, function(data) {
       let status = data[key];
       if (!status)

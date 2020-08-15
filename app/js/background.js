@@ -35,7 +35,7 @@ function addScriptTagToHead() {
 // Sets the extension icon
 function setIcon(iconName, tabId) {
   chrome.pageAction.setIcon({
-      path: "icons/" + iconName,
+      path: 'img/icons/' + iconName,
       tabId: tabId
   });
 }
@@ -46,7 +46,7 @@ function _setStatus(className, text, tabId) {
     className: className,
     text: text
   };
-  let key = "tab" + tabId;
+  let key = 'tab' + tabId;
   let storedObject = {}
   storedObject[key] = status
   chrome.storage.local.set(storedObject);
@@ -55,9 +55,9 @@ function _setStatus(className, text, tabId) {
 // Sets an error message
 function setError(errorMessage, tabId) {
   setIcon('error.png', tabId);
-  let text = "<strong>Encountered an error.</strong><br/>";
+  let text = '<strong>Encountered an error.</strong><br/>';
   text += errorMessage;
-  text += "<br/><br/>Please contact the developer at ubercheats@arminsamii.com to address this.";
+  text += '<br/><br/>Please contact the developer at ubercheats@arminsamii.com to address this.';
   _setStatus('warning', text, tabId)
 }
 
@@ -68,22 +68,22 @@ function setInfo(message, tabId) {
 
 // Sets a message signifying UberEats paid you fairly
 function setAcceptable(message, tabId) {
-  setIcon("acceptable.png", tabId);
+  setIcon('acceptable.png', tabId);
   _setStatus('acceptable', message, tabId)
 }
 
 // Sets a message signifying UberEats underpaid you
 function setCheated(message, tabId) {
-  setIcon("cheated.png", tabId);
+  setIcon('cheated.png', tabId);
   _setStatus('cheated', message, tabId)
 }
 
 // Gets the lat/lon coordinates given a Google Maps API URL
 function getLatLonFor(pinImageSource, googleMapsImageSource) {
-  var numberRegex = "[-]?[0-9]*"
-  var latOrLonRegex = "(" + numberRegex + "." + numberRegex + ")"
-  var latAndLonRegex = latOrLonRegex + "%2C" + latOrLonRegex
-  var pickupRegex = new RegExp(pinImageSource + "%7Cscale%3A2%7C" + latAndLonRegex, "g");
+  var numberRegex = '[-]?[0-9]*'
+  var latOrLonRegex = `(" + numberRegex + "." + numberRegex + ")`
+  var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex
+  var pickupRegex = new RegExp(pinImageSource + '%7Cscale%3A2%7C' + latAndLonRegex, 'g');
   var match = pickupRegex.exec(googleMapsImageSource)
   var pickupLatitude = match[1]
   var pickupLongitude = match[2]
@@ -97,7 +97,7 @@ function queryGoogleForDistance(startLatLon, endLatLon, uberPaidForDistance, tab
   let start = new google.maps.LatLng(parseFloat(startLatLon[0]), parseFloat(startLatLon[1]));
   let end = new google.maps.LatLng(parseFloat(endLatLon[0]), parseFloat(endLatLon[1]));
 
-  setInfo("Reaching out to Google to compute the distance between " + start + " and " + end, tabId);
+  setInfo('Reaching out to Google to compute the distance between ' + start + ' and ' + end, tabId);
 
   const route = {
     origin: start,
@@ -113,7 +113,7 @@ function queryGoogleForDistance(startLatLon, endLatLon, uberPaidForDistance, tab
 // Compares the actual distance to what Uber paid, and lets you know if it wasn't fair
 // Fair is defined as a difference of more than 10%
 function compareDistances(actualDistance, uberPaidForDistance, tabId) {
-  var mileageRegex = new RegExp("([0-9]*\.?[0-9]*) (mi|km)", "g");
+  var mileageRegex = new RegExp('([0-9]*\.?[0-9]*) (mi|km)', 'g');
   
   // Get the uber match
   var uberMatch = mileageRegex.exec(uberPaidForDistance);
@@ -125,11 +125,11 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
   // Error handling: This shouldn't happen.
   if (!actualMatch || !uberMatch || actualMatch.length < 2 || uberMatch.length < 2)
   {
-    setError("Could not parse mileages:<br/>" +
-             "<br/>actual=" + actualDistance +
-             "<br/>uber paid for=" + uberPaidForDistance +
-             "<br/>actual match=" + actualMatch +
-             "<br/>uber match=" + uberMatch,
+    setError('Could not parse mileages:<br/>' +
+             '<br/>actual=' + actualDistance +
+             '<br/>uber paid for=' + uberPaidForDistance +
+             '<br/>actual match=' + actualMatch +
+             '<br/>uber match=' + uberMatch,
              tabId);
     return;
   }
@@ -154,21 +154,21 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
   ga('send', 'event', 'fairness', 'percentDifference', Math.round(percentDiff*100));
 
   if (actualFloat <= uberPaidFloat) {
-    setAcceptable("As best I can tell, you were paid fairly.", tabId);
+    setAcceptable('As best I can tell, you were paid fairly.', tabId);
   } else if (percentDiff < 0.10) {
-    setAcceptable("You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.", tabId);
+    setAcceptable(`You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.`, tabId);
   } else {
-    let helpUrl = "https://www.reddit.com/r/UberEATS/comments/i2jyyj/14_emails_and_126_minutes_on_the_phone_later_uber/"
-    let text = "Uber paid you for " + uberPaidForDistance + " but the travel distance was actually " + actualDistance + ".<br/><br/>"
-    text += "<br/>Want to do something about it? Call UberEATS support, ask for a supervisor, and explain that you were underpaid."
-    text += "<br/>If you need advice getting paid fairly, reach out on the <a href=\"" + helpUrl + "\" target=\"_blank\">reddit thread</a>."
+    let helpUrl = 'https://www.reddit.com/r/UberEATS/comments/i2jyyj/14_emails_and_126_minutes_on_the_phone_later_uber/'
+    let text = 'Uber paid you for ' + uberPaidForDistance + ' but the travel distance was actually ' + actualDistance + '.<br/><br/>'
+    text += '<br/>Want to do something about it? Call UberEATS support, ask for a supervisor, and explain that you were underpaid.'
+    text += '<br/>If you need advice getting paid fairly, reach out on the <a href=\"' + helpUrl + '\" target=\"_blank\">reddit thread</a>.'
     setCheated(text, tabId);
   }
 }
 
 // Callback for when the Google Maps API returns directions
 function callbackDirectionsComplete(response, status, uberPaidForDistance, tabId) {
-  setInfo("Directions request received from google.", tabId)
+  setInfo('Directions request received from google.', tabId)
 
   if (status !== 'OK') {
     setError('Directions request failed due to ' + status, tabId);
@@ -189,7 +189,7 @@ function callbackDirectionsComplete(response, status, uberPaidForDistance, tabId
 
 // Callback for when the content-script finished running and returned data from the page
 function callbackFinishedReadingPage(tabId, result) {
-  setIcon("loading128.gif", tabId)
+  setIcon('loading128.gif', tabId)
 
   let pickupLatLon = result['pickupLatLon'];
   let dropoffLatLon = result['dropoffLatLon'];
@@ -208,21 +208,21 @@ function handleAnalyticsFromContentScript(returnValue) {
 
 // Returns true if there were errors
 function handleErrorsFromContentScript(tabId, returnValue) {
-  let errorMessage = "Could not find the data we were looking for on this page. "
-  errorMessage += "If you're okay with it, can you hit Ctrl+S to save the page data, "
-  errorMessage += "then attach it in an email to the developer, along with this message:"
-  errorMessage += "<br/><br/>"
+  let errorMessage = 'Could not find the data we were looking for on this page. '
+  errorMessage += `If you're okay with it, can you hit Ctrl+S to save the page data, `
+  errorMessage += 'then attach it in an email to the developer, along with this message:'
+  errorMessage += '<br/><br/>'
   
   let wereThereErrors = false;
   if (!returnValue) {
-    errorMessage += "\"Failed to parse anything\""
+    errorMessage += '"Failed to parse anything"'
     wereThereErrors = true;
   } else {
     if (!returnValue.pickupLatLon || !returnValue.dropoffLatLon) {
-      errorMessage += "\"Failed to parse the pickup/dropoff locations\""
+      errorMessage += '"Failed to parse the pickup/dropoff locations"'
       wereThereErrors = true;
     } else if (!returnValue.uberPaidForDistance) {
-      errorMessage += "\"Failed to parse the distance\""
+      errorMessage += '"Failed to parse the distance"'
       wereThereErrors = true;
     }
   }
@@ -257,7 +257,7 @@ chrome.webNavigation.onCompleted.addListener(
     var tabId = details.tabId;
     if (!isGoogleAPILoaded)
     {
-      setError("Please wait...the Google Maps API has not yet loaded", tabId)
+      setError('Please wait...the Google Maps API has not yet loaded', tabId)
       return;
     }
 
