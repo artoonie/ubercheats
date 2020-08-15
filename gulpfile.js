@@ -39,8 +39,8 @@ function test() {
 // Optimize Images
 function images() {
   return gulp
-    .src('./assets/images/**/*')
-    .pipe(newer('./_site/assets/img'))
+    .src('./app/icons/*')
+    .pipe(newer('./_site/assets/icons'))
     .pipe(
       imagemin([
 //        imagemin.gifsicle({ interlaced: true }),
@@ -56,7 +56,7 @@ function images() {
         })
       ])
     )
-    .pipe(gulp.dest('./_site/assets/img'));
+    .pipe(gulp.dest('./_site/assets/icons'));
 }
 
 function zip_package() {
