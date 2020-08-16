@@ -1,13 +1,13 @@
-I discovered that UberEATS systematically underpays its drivers regularly. After 14 emails and 126 minutes on the phone, they finally admitted to this on the record: 
+![UberCheats: Demand your fair share](static/marquee-promo-tile.png)
 
-[![Watch the video](uberscreenshots.png)](https://www.youtube.com/watch?v=rhDbcIO4Fe8)
-(click to hear the audio of the admission)
+I discovered that UberEATS systematically underpays its drivers regularly.
+After 14 emails and 126 minutes on the phone, they finally admitted to this on the record.
 
 This is a Chrome Extension which allows you to detect when UberEATS has underpaid you.
 
+# Videos
+1. [Motivation / audio of Uber admitting to underpaying drivers](https://www.youtube.com/watch?v=nNI2kVAyEQ4)
+2. [How to use this extension](https://www.youtube.com/watch?v=1k2YYlb21N8)
+
 # TODO
 1. Switch between biking/driving directions
-2. Do everything in the icon - no need for active clicking
-3. Add debug information and contact information
-4. Add better descriptions
-5. Put on chrome web store
