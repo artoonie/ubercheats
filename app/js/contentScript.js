@@ -87,12 +87,6 @@ function readUberPaidForDistance()
     return [matches[1] + ` ` + matches[2], 'by-dangerous-regex']
   }
 
-    { 
-      let strippedString = document.documentElement.innerHTML.replace(/</gi, "&lt;");
-      strippedString = strippedString.replace(/>/gi, "&gt;");
-      document.documentElement.innerHTML = `Could not parse the distance! Please send this to Armin: <html><pre>${strippedString}</pre></html>`
-    }
-
   return [null, 'wasnt-found'];
 }
 
