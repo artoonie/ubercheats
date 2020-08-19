@@ -1,7 +1,12 @@
 // Sets the status text and class
-function _setStatus(className, status) {
+function _setStatus(className, status, showTutorialVideo) {
   document.getElementById('status').className = className;
   document.getElementById('status').innerHTML = status;
+  if (showTutorialVideo) {
+    document.getElementById('tutorialVideo').style.display = 'block';
+  } else {
+    document.getElementById('tutorialVideo').style.display = 'none';
+  }
 }
 
 // When the popup opens, get the current tab ID, then check the local storage
@@ -17,7 +22,7 @@ window.onload = function() {
       {
         return;
       }
-      _setStatus(status.className, status.text);
+      _setStatus(status.className, status.text, status.showTutorialVideo);
     });
   });
 };

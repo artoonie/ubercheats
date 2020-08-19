@@ -9,6 +9,13 @@
       #status {
           width: 400px;
       }
+      .tutorial {
+        padding: 10px;
+        border: 1px solid lightgray;
+        border-radius: 10px;
+        color: #00529B;
+        background-color: #EFFBFF;
+      }
       .info, .warning, .validation, .cheated, .acceptable {
         border: 1px solid;
         margin: 10px 0px;
@@ -40,9 +47,15 @@
   </head>
   <body>
     <h3>Did UberEats steal from me?</h3>
-    <i>Uber <a href="https://www.reddit.com/r/UberEATS/comments/i2jyyj/14_emails_and_126_minutes_on_the_phone_later_uber/">has admitted</a> to systematically underpaying delivery drivers and bikers. Find out how much you've been underpaid on each trip.</i>
+    <i>Uber <a href="https://www.youtube.com/watch?v=nNI2kVAyEQ4" target="_blank">has admitted</a> to systematically underpaying delivery drivers and bikers. Find out how much you've been underpaid on each trip.</i>
 
     <div class="info" id="status">Initializing...if this message doesn't go away, try refreshing the page</div>
+
+    <div id="tutorialVideo" style="display:none" class="tutorial">
+        Need help using UberCheats? Watch the <a href="https://www.youtube.com/watch?v=1k2YYlb21N8" target="_blank">tutorial video</a>:
+        <br/><br/>
+        <iframe width="400" height="225" src="https://www.youtube-nocookie.com/embed/1k2YYlb21N8" frameborder="0" allow="encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
 
     <script src="js/popup.js" defer></script>
 

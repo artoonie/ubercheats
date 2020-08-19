@@ -41,10 +41,11 @@ function setIcon(iconName, tabId) {
 }
 
 // Sets the status using the storage API to pass it to the popup
-function _setStatus(className, text, tabId) {
+function _setStatus(className, text, tabId, showTutorialVideo) {
   let status = {
     className: className,
-    text: text
+    text: text,
+    showTutorialVideo: showTutorialVideo
   };
   let key = 'tab' + tabId;
   let storedObject = {}
@@ -58,24 +59,30 @@ function setError(errorMessage, tabId) {
   let text = '<strong>Encountered an error.</strong><br/>';
   text += errorMessage;
   text += '<br/><br/>Please contact the developer at ubercheats@arminsamii.com to address this.';
-  _setStatus('warning', text, tabId)
+  _setStatus('warning', text, tabId, true)
+}
+
+// Sets a tutorial message
+function setTut(message, tabId) {
+  message = 'Next step: ' + message
+  _setStatus('info', message, tabId, true)
 }
 
 // Sets an info message
 function setInfo(message, tabId) {
-  _setStatus('info', message, tabId)
+  _setStatus('info', message, tabId, true)
 }
 
 // Sets a message signifying UberEats paid you fairly
 function setAcceptable(message, tabId) {
   setIcon('acceptable.png', tabId);
-  _setStatus('acceptable', message, tabId)
+  _setStatus('acceptable', message, tabId, false)
 }
 
 // Sets a message signifying UberEats underpaid you
 function setCheated(message, tabId) {
   setIcon('cheated.png', tabId);
-  _setStatus('cheated', message, tabId)
+  _setStatus('cheated', message, tabId, false)
 }
 
 // Gets the lat/lon coordinates given a Google Maps API URL
@@ -158,10 +165,11 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
   } else if (percentDiff < 0.10) {
     setAcceptable(`You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.`, tabId);
   } else {
-    let helpUrl = 'https://www.reddit.com/r/UberEATS/comments/i2jyyj/14_emails_and_126_minutes_on_the_phone_later_uber/'
+    let helpUrlReddit = 'https://www.reddit.com/r/UberEATS/comments/icdu0y/ubercheats_is_now_live_check_if_ubereats_has/'
+    let helpUrlTwitter = 'https://twitter.com/ArminSamii/status/1295857106080456706'
     let text = 'Uber paid you for ' + uberPaidForDistance + ' but the travel distance was actually ' + actualDistance + '.<br/><br/>'
     text += '<br/>Want to do something about it? Call UberEATS support, ask for a supervisor, and explain that you were underpaid.'
-    text += '<br/>If you need advice getting paid fairly, reach out on the <a href=\"' + helpUrl + '\" target=\"_blank\">reddit thread</a>.'
+    text += '<br/>If you need advice getting paid fairly, reach out on <a href=\"' + helpUrlReddit + '\" target=\"_blank\">Reddit</a> or <a href=\"' + helpUrlTwitter + '\" target=\"_blank\">Twitter</a>.'
     setCheated(text, tabId);
   }
 }
@@ -254,26 +262,60 @@ function runCheatDetector(tabId) {
   )
 }
 
-// Adds a listener for a page load on the Uber payments page
-chrome.webNavigation.onCompleted.addListener(
-  function(details) {
-    var tabId = details.tabId;
-    if (!isGoogleAPILoaded)
+var listeners = [
     {
-      setError('Please wait...the Google Maps API has not yet loaded', tabId)
-      return;
-    }
+        func: function(details) {
+            var tabId = details.tabId;
+            if (!isGoogleAPILoaded)
+            {
+                setError('Please wait...the Google Maps API has not yet loaded', tabId)
+                return;
+            }
 
-    setIcon('loading128.gif', tabId);
-    runCheatDetector(tabId);
-  }, {
-  url: [
+            setIcon('loading128.gif', tabId);
+            runCheatDetector(tabId);
+        },
+        url: {
+            hostSuffix: 'drivers.uber.com',
+            pathPrefix: '/p3/payments/v2/trips/',
+        }
+    },
     {
-      hostSuffix: 'drivers.uber.com',
-      pathPrefix: '/p3/payments/v2/trips/',
+        func: function(details) {
+            var tabId = details.tabId;
+            setTut('Click on "Statements" in the left corner, next to Weekly Earnings', tabId)
+        },
+        url: {
+            hostSuffix: 'drivers.uber.com',
+            pathPrefix: '/p3/payments/performance-hub',
+        }
+    },
+    {
+        func: function(details) {
+            var tabId = details.tabId;
+            setTut('Click on "View Statement" for as many statements as you wish to check', tabId)
+        },
+        url: {
+            hostSuffix: 'drivers.uber.com',
+            pathEquals: '/p3/payments/statements',
+        }
+    },
+    {
+        func: function(details) {
+            var tabId = details.tabId;
+            setTut('Click on the Trip ID for every trip in this statement. Use ctrl+click or cmd+click to open each statement into a new tab.', tabId)
+        },
+        url: {
+            hostSuffix: 'drivers.uber.com',
+            pathPrefix: '/p3/payments/statements/',
+        }
     }
-  ]}
-)
+]
+
+listeners.map(function(listener) {
+  chrome.webNavigation.onCompleted.addListener(listener.func, {url: [listener.url]})
+  chrome.webNavigation.onHistoryStateUpdated.addListener(listener.func, {url: [listener.url]})
+})
 
 chrome.runtime.onInstalled.addListener(function() {
   chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
