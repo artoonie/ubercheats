@@ -1,20 +1,24 @@
 'use strict';
 
-// Standard Google Universal Analytics code
-(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-})(window,document,'script','https://www.google-analytics.com/analytics.js','ga'); // Note: https protocol here
-window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
-ga('create', 'UA-175307097-1', 'auto');
-ga('set', 'checkProtocolTask', function(){}); // Removes failing protocol check. @see: http://stackoverflow.com/a/22152353/1958200
-ga('require', 'displayfeatures');
-ga('send', 'pageview', 'background');
+function loadGoogleAnalytics() {
+  // Standard Google Universal Analytics code
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga'); // Note: https protocol here
+  window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+  ga('create', 'UA-175307097-1', 'auto');
+  ga('set', 'checkProtocolTask', function(){}); // Removes failing protocol check. @see: http://stackoverflow.com/a/22152353/1958200
+  ga('require', 'displayfeatures');
+  ga('send', 'pageview', 'popup');
+}
+
+loadGoogleAnalytics();
 
 var isGoogleAPILoaded = false;
 
 // This happens fairly quickly, but we still need a safeguard in case the API fails to load
-// Once its reloaded, clear the localstorage cache.
+// Once its reloaded, clear the localstorage cache, but maintain the synced storage.
 function googleApiIsLoaded() {
   isGoogleAPILoaded = true;
 
@@ -99,10 +103,10 @@ function getLatLonFor(pinImageSource, googleMapsImageSource) {
 
 // Queries Google Maps for the distance between the start and end points,
 // then asynchronously compares that value to what UberEats paid you for
-function queryGoogleForDistance(startLatLon, endLatLon, uberPaidForDistance, tabId) {
+function queryGoogleForDistance(pickupLatLon, dropoffLatLon, uberPaidForDistance, tabId, tripId) {
   let directionsService = new google.maps.DirectionsService();
-  let start = new google.maps.LatLng(parseFloat(startLatLon[0]), parseFloat(startLatLon[1]));
-  let end = new google.maps.LatLng(parseFloat(endLatLon[0]), parseFloat(endLatLon[1]));
+  let start = new google.maps.LatLng(parseFloat(pickupLatLon[0]), parseFloat(pickupLatLon[1]));
+  let end = new google.maps.LatLng(parseFloat(dropoffLatLon[0]), parseFloat(dropoffLatLon[1]));
 
   setInfo('Reaching out to Google to compute the distance between ' + start + ' and ' + end, tabId);
 
@@ -112,14 +116,19 @@ function queryGoogleForDistance(startLatLon, endLatLon, uberPaidForDistance, tab
     travelMode: 'DRIVING'
   }
 
+  const routeToCacheLater = {
+    pickupLatLon: pickupLatLon,
+    dropoffLatLon: dropoffLatLon
+  }
+
   directionsService.route(route, function(response, status) {
-    callbackDirectionsComplete(response, status, uberPaidForDistance, tabId);
+    callbackDirectionsComplete(response, status, uberPaidForDistance, routeToCacheLater, tabId, tripId);
   });
 }
 
 // Compares the actual distance to what Uber paid, and lets you know if it wasn't fair
 // Fair is defined as a difference of more than 10%
-function compareDistances(actualDistance, uberPaidForDistance, tabId) {
+function distanceStringsToFloatsInMi(actualDistance, uberPaidForDistance, tabId) {
   var mileageRegex = new RegExp('([0-9]*\.?[0-9]*) (mi|km)', 'g');
   
   // Get the uber match
@@ -138,35 +147,38 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
              '<br/>actual match=' + actualMatch +
              '<br/>uber match=' + uberMatch,
              tabId);
-    return;
+    return null;
   }
 
   var actualFloat = parseFloat(actualMatch[1])
-  var uberPaidFloat = parseFloat(uberMatch[1])
+  var uberPaidForFloat = parseFloat(uberMatch[1])
 
   // Standardize to miles
   var googleUnits = actualMatch[2]
   var uberUnits = actualMatch[2]
   if (uberUnits == 'km')
   {
-    uberPaidFloat *= 0.621371;
+    uberPaidForFloat *= 0.621371;
   }
   if (googleUnits == 'km')
   {
     actualFloat *= 0.621371;
   }
 
-  var percentDiff = (actualFloat - uberPaidFloat) / actualFloat
-  ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', Math.round((actualFloat - uberPaidFloat) * 100));
-  ga('send', 'event', 'fairness', 'percentDifference', Math.round(percentDiff*100));
+  return {actualFloat: actualFloat, uberPaidForFloat: uberPaidForFloat};
+}
 
-  if (actualFloat <= uberPaidFloat) {
+// Using the provided distances, determines what message and icon should be shown to the user
+function compareDistancesAndSetPopupText(actualFloat, uberPaidForFloat, actualDistance, uberPaidForDistance, tabId)
+{
+  var percentDiff = (actualFloat - uberPaidForFloat) / uberPaidForFloat;
+  if (actualFloat <= uberPaidForFloat) {
     setAcceptable('As best I can tell, you were paid fairly.', tabId);
   } else if (percentDiff < 0.10) {
     setAcceptable(`You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.`, tabId);
   } else {
-    let helpUrlReddit = 'https://www.reddit.com/r/UberEATS/comments/icdu0y/ubercheats_is_now_live_check_if_ubereats_has/'
-    let helpUrlTwitter = 'https://twitter.com/ArminSamii/status/1295857106080456706'
+    let helpUrlReddit = 'https://www.reddit.com/r/UberEATS/comments/icdu0y/ubercheats_is_now_live_check_if_ubereats_has/' // also in popup.js
+    let helpUrlTwitter = 'https://twitter.com/ArminSamii/status/1295857106080456706' // also in popup.js
     let text = 'Uber paid you for ' + uberPaidForDistance + ' but the travel distance was actually ' + actualDistance + '.<br/><br/>'
     text += '<br/>Want to do something about it? Call UberEATS support, ask for a supervisor, and explain that you were underpaid.'
     text += '<br/>If you need advice getting paid fairly, reach out on <a href=\"' + helpUrlReddit + '\" target=\"_blank\">Reddit</a> or <a href=\"' + helpUrlTwitter + '\" target=\"_blank\">Twitter</a>.'
@@ -174,8 +186,56 @@ function compareDistances(actualDistance, uberPaidForDistance, tabId) {
   }
 }
 
+// Store locally and send to google analytics if this URL is unique
+function storeAndAnalyzeDistances(actualFloat, uberPaidForFloat, actualDistance, uberPaidForDistance, routeLatLon, tripId)
+{
+  var key = 'comparisons_' + tripId;
+  chrome.storage.sync.get(key, function(data) {
+      if (key in data)
+      {
+        // Math shouldn't change over time, don't send to Google Analytics or store data twice
+        console.log("Key already in data - skipping: " + key);
+        return;
+      }
+
+      // Send data to google analytics
+      // Include the old, incorrect percent diff calculation to keep data consistent
+      var percentDiff = (actualFloat - uberPaidForFloat) / uberPaidForFloat;
+      var oldPercentDiffCalculation = (actualFloat - uberPaidForFloat) / actualFloat
+      ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', Math.round((actualFloat - uberPaidForFloat) * 100));
+      ga('send', 'event', 'fairness', 'percentDifference', Math.round(oldPercentDiffCalculation * 100));
+      ga('send', 'event', 'fairness', 'percentDifferenceCorrected', Math.round(percentDiff * 100));
+
+      data = {
+        'url': tripId,
+        'uberPaidForDistance': uberPaidForDistance,
+        'actualDistance': actualDistance,
+        'uberPaidForFloat': uberPaidForFloat,
+        'actualFloat': actualFloat,
+        'percentDifference': percentDiff,
+        'routeLatLon': routeLatLon
+      }
+
+      let storedObject = {}
+      storedObject[key] = data
+      chrome.storage.sync.set(storedObject);
+  });
+}
+
+// Converts to miles, compares the distances, saves to local cache, and sends to google analytics
+function compareDistancesFromStrings(actualDistance, uberPaidForDistance, routeLatLon, tabId, tripId) {
+  // Convert to floating-point miles
+  let floats = distanceStringsToFloatsInMi(actualDistance, uberPaidForDistance, tabId);
+
+  // Analyze the distance and show result to user
+  compareDistancesAndSetPopupText(floats.actualFloat, floats.uberPaidForFloat, actualDistance, uberPaidForDistance, tabId);
+
+  // Accumulate data locally and on Google Analytics
+  storeAndAnalyzeDistances(floats.actualFloat, floats.uberPaidForFloat, actualDistance, uberPaidForDistance, routeLatLon, tripId);
+}
+
 // Callback for when the Google Maps API returns directions
-function callbackDirectionsComplete(response, status, uberPaidForDistance, tabId) {
+function callbackDirectionsComplete(response, status, uberPaidForDistance, routeLatLon, tabId, tripId) {
   setInfo('Directions request received from google.', tabId)
 
   if (status !== 'OK') {
@@ -188,9 +248,19 @@ function callbackDirectionsComplete(response, status, uberPaidForDistance, tabId
       return -1;
     }
     else {
-      // Success!
-      let actualDistance = directionsData.distance.text;
-      compareDistances(actualDistance, uberPaidForDistance, tabId)
+      // Success! Find the shortest-distance route to give Uber the benefit of the doubt
+      let minRouteMeters = 9999999999;
+      let legOfShortestRoute = directionsData;
+      response.routes.forEach(function(route, routeIndex, array) {
+        let thisRouteDistanceMeters = route.legs[0].distance
+        if (thisRouteDistanceMeters < minRouteMeters)
+        {
+          minRouteMeters = thisRouteDistanceMeters;
+          legOfShortestRoute = route.legs[0];
+        }
+      });
+      let actualDistance = legOfShortestRoute.distance.text;
+      compareDistancesFromStrings(actualDistance, uberPaidForDistance, routeLatLon, tabId, tripId);
     }
   }
 }
@@ -201,8 +271,9 @@ function callbackFinishedReadingPage(tabId, result) {
 
   let pickupLatLon = result['pickupLatLon'];
   let dropoffLatLon = result['dropoffLatLon'];
-  let uberPaidForDistance = result['uberPaidForDistance']
-  queryGoogleForDistance(pickupLatLon, dropoffLatLon, uberPaidForDistance, tabId);
+  let uberPaidForDistance = result['uberPaidForDistance'];
+  let tripId = result['tripId'];
+  queryGoogleForDistance(pickupLatLon, dropoffLatLon, uberPaidForDistance, tabId, tripId);
 }
 
 function handleAnalyticsFromContentScript(returnValue) {

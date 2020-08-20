@@ -7,9 +7,28 @@
         font-size: 13px;
       }
       #status {
-          width: 400px;
+        width: 500px;
       }
-      .tutorial {
+
+      .tableSummary {
+        padding: 20px;
+        border: 1px solid #ddd;
+        width: 100%;
+        height: 300px;
+        overflow: auto;
+      }
+      .tableSummary th {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        text-align: left;
+        color: white;
+        background-color: #4CAF50;
+      }
+      .tableSummary tr:hover {
+        background-color: #ddd !important;
+      }
+
+      .tutorial, .summary {
         padding: 10px;
         border: 1px solid lightgray;
         border-radius: 10px;
@@ -55,6 +74,10 @@
         Need help using UberCheats? Watch the <a href="https://www.youtube.com/watch?v=1k2YYlb21N8" target="_blank">tutorial video</a>:
         <br/><br/>
         <iframe width="400" height="225" src="https://www.youtube-nocookie.com/embed/1k2YYlb21N8" frameborder="0" allow="encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+
+    <button id="summaryButton">Show summary of all trips seen so far</button>
+    <div id="summary" style="display:none" class="summary">
     </div>
 
     <script src="js/popup.js" defer></script>

@@ -30,7 +30,7 @@ function test() {
       'preprocessorIgnorePatterns': [
         '<rootDir>/dist/', '<rootDir>/node_modules/'
       ],
-      'automock': false,
+      'automock': true,
       'coverage': true,
       'type': 'module'
     }));

@@ -90,17 +90,24 @@ function readUberPaidForDistance()
   return [null, 'wasnt-found'];
 }
 
+// Gets the tripId - which, for now, is just the page URL
+function getTripId() {
+  return window.location.href;
+}
+
 // Compute and return all data
 function getAllData()
 {
   let pickupDropoff = computePickupDropoff();
   let uberPaidForDistanceTuple = readUberPaidForDistance();
+  let tripId = getTripId();
 
   return {
     'pickupLatLon': pickupDropoff[0],
     'dropoffLatLon': pickupDropoff[1],
     'uberPaidForDistance': uberPaidForDistanceTuple[0],
     'howUberPaidForWasFound': uberPaidForDistanceTuple[1],
+    'tripId': tripId,
   }
 }
 // This gets returned to the executor
