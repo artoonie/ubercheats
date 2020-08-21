@@ -194,7 +194,7 @@ function storeAndAnalyzeDistances(actualFloat, uberPaidForFloat, actualDistance,
       if (key in data)
       {
         // Math shouldn't change over time, don't send to Google Analytics or store data twice
-        console.log("Key already in data - skipping: " + key);
+        console.log('Key already in data - skipping: ' + key);
         return;
       }
 

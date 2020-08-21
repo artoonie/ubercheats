@@ -11,10 +11,10 @@ function _setStatus(className, status, showTutorialVideo) {
 
 // int to hex (c/o https://stackoverflow.com/a/32257791/1057105)
 function hex(c) {
-  var s = "0123456789abcdef";
+  var s = '0123456789abcdef';
   var i = parseInt (c);
   if (i == 0 || isNaN (c))
-        return "00";
+        return '00';
   i = Math.round (Math.min (Math.max (0, i), 255));
   return s.charAt ((i - i % 16) / 16) + s.charAt (i % 16);
 }
@@ -49,9 +49,9 @@ function getHtmlForSummaryRow(entry) {
 
     let percentDiffText = Math.round(entry.percentDifference*100, 2);
     if (percentDiffText <= 0) {
-        percentDiffText = "correctly paid";
+        percentDiffText = 'correctly paid';
     } else {
-        percentDiffText += "%";
+        percentDiffText += '%';
     }
 
     let bgColor = getHexColorForPercentDiff(entry.percentDifference)
@@ -62,7 +62,7 @@ function getHtmlForSummaryRow(entry) {
     html += `<td><a href="${googleMapsUrl}" target="_blank">${entry.actualDistance}</a></td>`
     html += `<td>${percentDiffText}<span style="font-size:0.7em"><br/>(${entry.actualFloat} mi-${entry.uberPaidForFloat} mi)/${entry.uberPaidForFloat} mi</span></td>`
 
-    html += "</tr>"
+    html += '</tr>'
     return html;
 }
 
@@ -71,25 +71,32 @@ function generateTableForEntries(entries) {
     let helpUrlReddit = 'https://www.reddit.com/r/UberEATS/comments/icdu0y/ubercheats_is_now_live_check_if_ubereats_has/' // also in background.js
     let helpUrlTwitter = 'https://twitter.com/ArminSamii/status/1295857106080456706' // also in background.js
 
+    let sumUnderpayments = entries.reduce(function(total, entry) {
+        return total + Math.max(0, entry.actualFloat-entry.uberPaidForFloat)
+    }, 0);
+
+    // Table header
     let html = 'This table only shows statements you\'ve already clicked on. Populate this table by clicking on each statement, as per the <a href="https://www.youtube.com/watch?v=1k2YYlb21N8">tutorial</a>.<br/><br/>'
     html += `Have a lot of red values in this summary? Let us know! Share your story on <a href="${helpUrlReddit}" target=\"_blank\">Reddit</a> or <a href="${helpUrlTwitter}" target=\"_blank\">Twitter</a><br/><br/>`
+    html += `<i>You have been underpaid for a total of ${sumUnderpayments} miles:</i><br/><br/>`
     html += '<table class="tableSummary"><th>Uber paid you for</th>    <th>Actual shortest distance</th>   <th>Percent difference</th></tr>'
 
     entries.forEach(function(entry, entryIndex, array) {
         html += getHtmlForSummaryRow(entry);
     });
 
-    html += "</table>";
+    html += '</table>';
     return html;
 }
 
 // On button click to show summary
 function showSummary() {
+  document.getElementById('summaryButton').style.display = 'none';
   summary = document.getElementById('summary');
   summary.style.display = 'block';
   chrome.storage.sync.get(null, function(data) {
     let keys = Object.keys(data);
-    let unsortedKeys = keys.filter(key => key.startsWith("comparisons"));
+    let unsortedKeys = keys.filter(key => key.startsWith('comparisons'));
     let unsortedEntries = keys.map(key => data[key]);
     let sortedEntries = unsortedEntries.sort(function(entry0, entry1) {
         return entry1.percentDifference - entry0.percentDifference;
@@ -130,4 +137,4 @@ function loadGoogleAnalytics() {
 }
 
 loadGoogleAnalytics();
-document.getElementById("summaryButton").addEventListener("click", showSummary);
+document.getElementById('summaryButton').addEventListener('click', showSummary);
