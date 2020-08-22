@@ -30,7 +30,7 @@ function test() {
       'preprocessorIgnorePatterns': [
         '<rootDir>/dist/', '<rootDir>/node_modules/'
       ],
-      'automock': true,
+      'automock': false,
       'coverage': true,
       'type': 'module'
     }));
@@ -93,7 +93,7 @@ function scripts() {
     gulp
       .src(['./app/js/**/*'])
       .pipe(plumber())
-      // .pipe(webpackstream(webpackconfig, webpack)) // There's probably a good way to bundle this but that's for later.
+      .pipe(webpackstream(webpackconfig, webpack))
       // folder only, filename is specified in webpack config
       .pipe(gulp.dest('./_site/assets/js/'))
   );

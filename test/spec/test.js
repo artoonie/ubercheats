@@ -5,16 +5,25 @@ jest.mock('../../app/js/background.js', () => (
     }
 ))
 
-//const bg = require('../../app/js/background.js');
+const bg = require('../../app/js/background-functions.js');
 
-describe('Give it some context', () => {
-  describe('maybe a bit more context here', () => {
-    it('gets xpath elements', () => {
-      return;
-      bg.loadGoogleAnalytics = jest.fn()
+describe('Test background', () => {
+  it('check stored data', () => {
+    let routeLatLonFake = {whatever:0};
+    let data = bg.computeDataToStoreForSummaryTable(5.5, 1.0, "5.5 mi", "2.2 km", routeLatLonFake, "http://fake/tripid/0");
+    expect(data.url).toEqual("http://fake/tripid/0");
+    expect(data.percentDifference).toBeGreaterThan(1.1); // the threshold at which we complain
+    expect(data.actualFloat).toEqual(5.5);
+    expect(data.uberPaidForFloat).toEqual(1.0);
+    expect(data.routeLatLon).toEqual(routeLatLonFake);
+  }),
+  it('check mi to km conversions', () => {
+    let floats = bg.distanceStringsToFloatsInMi("5.5 mi", "2.2 km", 0);
+    expect(floats.actualFloat).toEqual(5.5);
+    expect(Math.abs(floats.uberPaidForFloat-1.367017)).toBeLessThan(.001);
 
-      storeAndAnalyzeDistances(5.5, 1.0, "5.5 mi", "2.2 km", 0);
-      expect(5).toEqual(5);
-    });
+    floats = bg.distanceStringsToFloatsInMi("1.609334 km", "1.0 mi", 0);
+    expect(Math.abs(floats.actualFloat-1.0)).toBeLessThan(.001);
+    expect(Math.abs(floats.uberPaidForFloat-1.0)).toBeLessThan(.001);
   });
 })
