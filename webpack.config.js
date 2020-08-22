@@ -1,26 +1,65 @@
-// Copied from https://github.com/jeromecoupe/webstoemp
-const path = require("path");
+// Derived from https://github.com/samuelsimoes/chrome-extension-webpack-boilerplate
 
-module.exports = {
+var webpack = require("webpack"),
+    path = require("path"),
+    fileSystem = require("fs"),
+    CleanWebpackPlugin = require("clean-webpack-plugin").CleanWebpackPlugin,
+    CopyWebpackPlugin = require("copy-webpack-plugin"),
+    HtmlWebpackPlugin = require("html-webpack-plugin"),
+    WriteFilePlugin = require("write-file-webpack-plugin");
+
+// load the secrets
+var alias = {};
+
+var fileExtensions = ["jpg", "jpeg", "png", "gif", "eot", "otf", "svg", "ttf", "woff", "woff2"];
+
+var options = {
   mode: "production",
-  entry: "./app/js/popup.js",
+  entry: {
+    popup: path.join(__dirname, "app", "js", "popup.js"),
+    background: path.join(__dirname, "app", "js", "background.js")
+  },
   output: {
-    path: path.resolve(__dirname, "./dist/js"),
-    filename: "bundle.js",
+    path: path.join(__dirname, "build"),
+    filename: "[name].js"
   },
   module: {
     rules: [
       {
-        enforce: "pre",
-        test: /\.js$/,
-        include: [path.resolve(__dirname, "./src/assets/js")],
-        loader: "eslint-loader",
+        test: /\.css$/,
+        loader: "style-loader!css-loader",
+        exclude: /node_modules/
       },
       {
-        test: /\.js?$/,
-        include: [path.resolve(__dirname, "./src/assets/js")],
-        loader: "babel-loader",
+        test: new RegExp('.(' + fileExtensions.join('|') + ')$'),
+        loader: "file-loader?name=[name].[ext]",
+        exclude: /node_modules/
       },
-    ],
+      {
+        test: /\.html$/,
+        loader: "html-loader",
+        exclude: /node_modules/
+      }
+    ]
   },
+  resolve: {
+    alias: alias
+  },
+  plugins: [
+    // clean the build folder
+    new CleanWebpackPlugin(),
+    // expose and write the allowed env vars on the compiled bundle
+    new webpack.EnvironmentPlugin(["NODE_ENV"]),
+    new CopyWebpackPlugin([{
+      from: "app/manifest.json"
+    }]),
+    new HtmlWebpackPlugin({
+      template: path.join(__dirname, "app", "popup.html"),
+      filename: "popup.html",
+      chunks: ["popup"]
+    }),
+    new WriteFilePlugin()
+  ]
 };
+
+module.exports = options;
