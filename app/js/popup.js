@@ -60,7 +60,7 @@ function getHtmlForSummaryRow(entry) {
 
     html += `<td><a href="${entry.url}" target="_blank">${entry.uberPaidForDistance}</a></td>`
     html += `<td><a href="${googleMapsUrl}" target="_blank">${entry.actualDistance}</a></td>`
-    html += `<td>${percentDiffText}<span style="font-size:0.7em"><br/>(${entry.actualFloat} mi-${entry.uberPaidForFloat} mi)/${entry.uberPaidForFloat} mi</span></td>`
+    html += `<td>${percentDiffText}<span style="font-size:0.7em"><br/>(${entry.actualFloatMi} mi-${entry.uberPaidForFloatMi} mi)/${entry.uberPaidForFloatMi} mi</span></td>`
 
     html += '</tr>'
     return html;
@@ -72,7 +72,7 @@ function generateTableForEntries(entries) {
     let helpUrlTwitter = 'https://twitter.com/ArminSamii/status/1295857106080456706' // also in background.js
 
     let sumUnderpayments = entries.reduce(function(total, entry) {
-        return total + Math.max(0, entry.actualFloat-entry.uberPaidForFloat)
+        return total + Math.max(0, entry.actualFloatMi-entry.uberPaidForFloatMi)
     }, 0);
 
     // Table header

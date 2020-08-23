@@ -127,29 +127,29 @@ function distanceStringsToFloatsInMi(actualDistance, uberPaidForDistance, tabId)
     return null;
   }
 
-  var actualFloat = parseFloat(actualMatch[1])
-  var uberPaidForFloat = parseFloat(uberMatch[1])
+  let actualFloatMiOrKm = parseFloat(actualMatch[1])
+  let uberPaidForFloatMiOrKm = parseFloat(uberMatch[1])
 
   // Standardize to miles
   var googleUnits = actualMatch[2]
   var uberUnits = uberMatch[2]
   if (uberUnits == 'km')
   {
-    uberPaidForFloat *= 0.621371;
+    uberPaidForFloatMiOrKm *= 0.621371;
   }
   if (googleUnits == 'km')
   {
-    actualFloat *= 0.621371;
+    actualFloatMiOrKm *= 0.621371;
   }
 
-  return {actualFloat: actualFloat, uberPaidForFloat: uberPaidForFloat};
+  return {actualFloatMi: actualFloatMiOrKm, uberPaidForFloatMi: uberPaidForFloatMiOrKm};
 }
 
 // Using the provided distances, determines what message and icon should be shown to the user
-function compareDistancesAndSetPopupText(actualFloat, uberPaidForFloat, actualDistance, uberPaidForDistance, tabId)
+function compareDistancesAndSetPopupText(actualFloatMi, uberPaidForFloatMi, actualDistance, uberPaidForDistance, tabId)
 {
-  var percentDiff = calculatePercentDiff(actualFloat, uberPaidForFloat);
-  if (actualFloat <= uberPaidForFloat) {
+  var percentDiff = calculatePercentDiff(actualFloatMi, uberPaidForFloatMi);
+  if (actualFloatMi <= uberPaidForFloatMi) {
     setAcceptable('As best I can tell, you were paid fairly.', tabId);
   } else if (percentDiff < 0.10) {
     setAcceptable(`You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.`, tabId);
@@ -163,50 +163,50 @@ function compareDistancesAndSetPopupText(actualFloat, uberPaidForFloat, actualDi
   }
 }
 
-function calculatePercentDiff(actualFloat, uberPaidForFloat) {
-  return (actualFloat - uberPaidForFloat) / uberPaidForFloat;
+function calculatePercentDiff(actualFloatMi, uberPaidForFloatMi) {
+  return (actualFloatMi - uberPaidForFloatMi) / uberPaidForFloatMi;
 }
 
-function logToGoogleAnalytics(actualFloat, uberPaidForFloat) {
+function logToGoogleAnalytics(actualFloatMi, uberPaidForFloatMi) {
   // Send data to google analytics
   // Include the old, incorrect percent diff calculation to keep data consistent
-  var percentDiff = calculatePercentDiff(actualFloat, uberPaidForFloat);
-  var oldPercentDiffCalculation = (actualFloat - uberPaidForFloat) / actualFloat
-  ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', Math.round((actualFloat - uberPaidForFloat) * 100));
+  var percentDiff = calculatePercentDiff(actualFloatMi, uberPaidForFloatMi);
+  var oldPercentDiffCalculation = (actualFloatMi - uberPaidForFloatMi) / actualFloatMi
+  ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', Math.round((actualFloatMi - uberPaidForFloatMi) * 100));
   ga('send', 'event', 'fairness', 'percentDifference', Math.round(oldPercentDiffCalculation * 100));
   ga('send', 'event', 'fairness', 'percentDifferenceCorrected', Math.round(percentDiff * 100));
 }
 
 // Callback for when storeAndAnalyzeDistances reads the key.
-function computeDataToStoreForSummaryTable(actualFloat, uberPaidForFloat, actualDistance, uberPaidForDistance, routeLatLon, tripId) {
-  var percentDiff = calculatePercentDiff(actualFloat, uberPaidForFloat);
+function computeDataToStoreForSummaryTable(actualFloatMi, uberPaidForFloatMi, actualDistance, uberPaidForDistance, routeLatLon, tripId) {
+  var percentDiff = calculatePercentDiff(actualFloatMi, uberPaidForFloatMi);
   return {
     'url': tripId,
     'uberPaidForDistance': uberPaidForDistance,
     'actualDistance': actualDistance,
-    'uberPaidForFloat': uberPaidForFloat,
-    'actualFloat': actualFloat,
+    'uberPaidForFloatMi': uberPaidForFloatMi,
+    'actualFloatMi': actualFloatMi,
     'percentDifference': percentDiff,
     'routeLatLon': routeLatLon
   }
 }
 
 // Store locally and send to google analytics if this URL is unique
-function storeAndAnalyzeDistances(actualFloat, uberPaidForFloat, actualDistance, uberPaidForDistance, routeLatLon, tripId) {
+function storeAndAnalyzeDistances(actualFloatMi, uberPaidForFloatMi, actualDistance, uberPaidForDistance, routeLatLon, tripId) {
   var key = 'comparisons_' + tripId;
   chrome.storage.sync.get(key, function(data) {
-      if (key in data)
+      let newData = computeDataToStoreForSummaryTable(actualFloatMi, uberPaidForFloatMi, actualDistance, uberPaidForDistance, routeLatLon, tripId);
+      if (key in data && data[key].percentDifference == newData.percentDifference)
       {
-        // Math shouldn't change over time, don't send to Google Analytics or store data twice
-        console.log('Key already in data - skipping: ' + key);
+        // Computation hasn't changed, don't send to Google Analytics or store data twice
+        console.log('Data already logged, not sending to GA: ' + key);
         return;
       }
 
-      logToGoogleAnalytics(actualFloat, uberPaidForFloat);
+      logToGoogleAnalytics(actualFloatMi, uberPaidForFloatMi);
 
-      data = computeDataToStoreForSummaryTable(actualFloat, uberPaidForFloat, actualDistance, uberPaidForDistance, routeLatLon, tripId);
-      let storedObject = {}
-      storedObject[key] = data
+      let storedObject = {};
+      storedObject[key] = newData;
       chrome.storage.sync.set(storedObject);
   });
 }
@@ -217,10 +217,10 @@ function compareDistancesFromStrings(actualDistance, uberPaidForDistance, routeL
   let floats = distanceStringsToFloatsInMi(actualDistance, uberPaidForDistance, tabId);
 
   // Analyze the distance and show result to user
-  compareDistancesAndSetPopupText(floats.actualFloat, floats.uberPaidForFloat, actualDistance, uberPaidForDistance, tabId);
+  compareDistancesAndSetPopupText(floats.actualFloatMi, floats.uberPaidForFloatMi, actualDistance, uberPaidForDistance, tabId);
 
   // Accumulate data locally and on Google Analytics
-  storeAndAnalyzeDistances(floats.actualFloat, floats.uberPaidForFloat, actualDistance, uberPaidForDistance, routeLatLon, tripId);
+  storeAndAnalyzeDistances(floats.actualFloatMi, floats.uberPaidForFloatMi, actualDistance, uberPaidForDistance, routeLatLon, tripId);
 }
 
 // Callback for when the Google Maps API returns directions
