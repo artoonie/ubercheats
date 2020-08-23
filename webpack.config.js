@@ -17,7 +17,7 @@ var options = {
   mode: "production",
   entry: {
     popup: path.join(__dirname, "app", "js", "popup.js"),
-    background: path.join(__dirname, "app", "js", "background.js")
+    background: path.join(__dirname, "app", "js", "background.js"),
   },
   output: {
     path: path.join(__dirname, "build"),
@@ -53,13 +53,17 @@ var options = {
     new CopyWebpackPlugin([{
       from: "app/manifest.json"
     }]),
+    new CopyWebpackPlugin([{
+      // have to copy this, can't minify or let node touch it because node wraps it in
+      // a function which makes it not return the value we expect
+      from: "app/js/contentScript.js"
+    }]),
     new HtmlWebpackPlugin({
       template: path.join(__dirname, "app", "popup.html"),
       filename: "popup.html",
       chunks: ["popup"]
     }),
     new WriteFilePlugin()
-  ]
-};
+  ]};
 
 module.exports = options;
