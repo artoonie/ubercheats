@@ -1,3 +1,13 @@
+class DataFromContentScript {
+  constructor(pickupLatLon, dropoffLatLon, uberPaidForString, howUberPaidForWasFound, tripId) {
+    this.pickupLatLon = pickupLatLon;
+    this.dropoffLatLon = dropoffLatLon;
+    this.uberPaidForString = uberPaidForString;
+    this.howUberPaidForWasFound = howUberPaidForWasFound;
+    this.tripId = tripId;
+  }
+}
+
 // Returns the latitude/longitude given a google maps image URL
 // pinImageSource is either car-pickup-pin.png or car-dropoff-pin.png
 function getLatLonFor(pinImageSource, googleMapsImageSource) {
@@ -102,13 +112,11 @@ function getAllData()
   let uberPaidForDistanceTuple = readUberPaidForDistance();
   let tripId = getTripId();
 
-  return {
-    'pickupLatLon': pickupDropoff[0],
-    'dropoffLatLon': pickupDropoff[1],
-    'uberPaidForDistance': uberPaidForDistanceTuple[0],
-    'howUberPaidForWasFound': uberPaidForDistanceTuple[1],
-    'tripId': tripId,
-  }
+  return new DataFromContentScript(
+    pickupDropoff[0], pickupDropoff[1],
+    uberPaidForDistanceTuple[0], uberPaidForDistanceTuple[1],
+    tripId);
 }
-// This gets returned to the executor
+
+// This gets passed to the executor
 getAllData();
