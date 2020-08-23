@@ -1,6 +1,7 @@
 'use strict';
 
 const bg = require('./background-functions.js');
+const {loadGoogleAnalytics} = require('./google-analytics.js');
 
 var isGoogleAPILoaded = false;
 
@@ -26,7 +27,7 @@ function addScriptTagToHead() {
   document.head.appendChild(script);
 }
 
-bg.loadGoogleAnalytics();
+loadGoogleAnalytics('background');
 
 var listeners = [
     {
