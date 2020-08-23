@@ -263,7 +263,7 @@ function callbackDirectionsComplete(response, status, dataFromStatement, tabId) 
       let minRouteMeters = 9999999999;
       let legOfShortestRoute = directionsData;
       response.routes.forEach(function(route, routeIndex, array) {
-        let thisRouteDistanceMeters = route.legs[0].distance
+        let thisRouteDistanceMeters = route.legs[0].distance.value
         if (thisRouteDistanceMeters < minRouteMeters)
         {
           minRouteMeters = thisRouteDistanceMeters;
@@ -362,14 +362,15 @@ function runCheatDetector(tabId) {
   )
 }
 
-module.exports = {loadGoogleAnalytics,
+module.exports = {DataFromGoogle,
+                  DataFromStatement,
+                  RouteCoordinates,
                   computeDataToStoreForSummaryTable,
+                  distanceStringToMilesFloat,
+                  queryGoogleForDistance,
                   runCheatDetector,
-                  setTut,
-                  setInfo,
                   setError,
                   setIcon,
-                  distanceStringToMilesFloat,
-                  DataFromStatement,
-                  DataFromGoogle,
-                  RouteCoordinates}
+                  setInfo,
+                  setTut,
+                  loadGoogleAnalytics}

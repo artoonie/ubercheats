@@ -1,9 +1,89 @@
-jest.mock('../../app/js/background.js', () => (
-    {
-        ...(jest.requireActual('../../app/js/background.js')),
-        loadGoogleAnalytics: () => {}
+class GoogleMockDirectionsService {
+  constructor() {}
+  route(route, callback) {
+    let response = {routes: [{
+        legs: [{
+          distance: {
+            value: 2*56327, // meters
+            text: "70 mi"
+          }
+        }]
+      }, {
+        legs: [{
+          distance: {
+            value: 1*56327, // meters
+            text: "35 mi"
+          }
+        }]
+      }, {
+        legs: [{
+          distance: {
+            value: 3*56327, // meters
+            text: "105 mi"
+          }
+        }]
+      }]
+    };
+    let status = "OK";
+    callback(response, status);
+  }
+}
+class GoogleMockLatLng {
+  constructor(lat, lon) {
+    this.lat = lat;
+    this.lon = lon;
+  }
+}
+class ChromeStorageMock {
+  constructor() {
+    this.data = {}
+  }
+  get(key, callback) {
+    if (key == null) {
+      return this.data;
     }
-))
+    // This could also be a list of keys but we don't use that
+    if (!(key in this.data)) {
+      return {};
+    }
+
+    let data = {}
+    data[key] = this.data[key];
+    callback(data);
+  }
+  set(data) {
+    for(const key in data) {
+      this.data[key] = data[key];
+    }
+  }
+  clear() {
+    this.data = {}
+  }
+}
+class ChromePageActionMock {
+  constructor() {
+  }
+  setIcon(data) {
+    this.path = data.path
+    this.tabId = data.tabId
+  }
+}
+googleMock = {
+    maps: {
+       DirectionsService: GoogleMockDirectionsService,
+                  LatLng: GoogleMockLatLng
+    }
+}
+let localChromeStorage = new ChromeStorageMock();
+let syncChromeStorage = new ChromeStorageMock();
+let pageAction = new ChromePageActionMock();
+chromeMock = {
+  storage: {
+    sync: syncChromeStorage,
+    local: localChromeStorage
+  },
+  pageAction: pageAction
+}
 
 const bg = require('../../app/js/background-functions.js');
 
@@ -27,5 +107,30 @@ describe('Test background', () => {
     expect(Math.abs(bg.distanceStringToMilesFloat("1.609334 km", 0)-1.0)).toBeLessThan(.001);
     expect(Math.abs(bg.distanceStringToMilesFloat("1 mi", 0)-1.0)).toBeLessThan(.001);
     expect(Math.abs(bg.distanceStringToMilesFloat("0.1 mi", 0)-0.1)).toBeLessThan(.001);
+  }),
+  it('check google', () => {
+    // Set up "mocks"
+    global.google = googleMock;
+    global.chrome = chromeMock
+
+    // Fake coordinates
+    let routeCoordinates = new bg.RouteCoordinates(40.106507, -79.578185, 39.673911, -79.865928);
+    let tripId = "http://fake/id/"
+    let dataFromStatement = new bg.DataFromStatement(32.5, "32.5 mi", routeCoordinates, tripId);
+
+    // Query google (with fake, synchronous callbacks)
+    bg.queryGoogleForDistance(dataFromStatement, 0);
+
+    // This should be marked as acceptable: 32.5 miles is within 10% of what we expect (35)
+    expect(localChromeStorage.data.tab0.className).toEqual("acceptable");
+    expect(pageAction.path).toEqual('icons/acceptable.png')
+
+    // Query google again, with 25 mi / 40.23 km
+    dataFromStatement = new bg.DataFromStatement(25, "40.2 km", routeCoordinates, tripId);
+    bg.queryGoogleForDistance(dataFromStatement, 0);
+
+    // This should be marked as cheated: 25 miles is more than 10% away
+    expect(localChromeStorage.data.tab0.className).toEqual("cheated");
+    expect(pageAction.path).toEqual('icons/cheated.png')
   });
 })
