@@ -93,7 +93,7 @@ function generateTableForEntries(entries) {
     let html = 'This table only shows statements you\'ve already clicked on. Populate this table by clicking on each statement, as per the <a href="https://www.youtube.com/watch?v=1k2YYlb21N8">tutorial</a>.<br/><br/>'
     html += `Have a lot of red values in this summary? Let us know! Share your story on <a href="${helpUrlReddit}" target=\"_blank\">Reddit</a> or <a href="${helpUrlTwitter}" target=\"_blank\">Twitter</a><br/><br/>`
     html += `<i>You have been underpaid for a total of ${roundedSumUnderpayments} miles:</i><br/><br/>`
-    html += '<table class="tableSummary"><th>Uber paid you for</th>    <th>Actual shortest distance</th>   <th>Percent difference</th></tr>'
+    html += '<table class="tableSummary"><th>Uber paid you for</th>    <th>Actual shortest distance</th>   <th>Underpaid by</th></tr>'
 
     entries.forEach(function(entry, entryIndex, array) {
         html += getHtmlForSummaryRow(entry);
