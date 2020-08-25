@@ -2,7 +2,7 @@ const m = require('./mocks.js');
 const bg = require('../../app/js/background-functions.js');
 
 describe('Test background', () => {
-  it('check stored data', () => {
+  it('Check the data sent to popup - which must not change to maintain backwards compatibility', () => {
     let routeCoordinatesFake = new bg.RouteCoordinates(1, 2, 3, 4);
     let dataFromStatement = new bg.DataFromStatement(1.0, "2.2 km", routeCoordinatesFake, "http://fake/tripid/0");
     let dataFromGoogle = new bg.DataFromGoogle(5.5, "5.5 mi");
@@ -16,13 +16,13 @@ describe('Test background', () => {
         dropoffLatLon: [3, 4]
     });
   }),
-  it('check mi to km conversions', () => {
+  it('Check conversion from km to mi', () => {
     expect(bg.distanceStringToMilesFloat("5.5 mi", 0)).toEqual(5.5);
     expect(Math.abs(bg.distanceStringToMilesFloat("1.609334 km", 0)-1.0)).toBeLessThan(.001);
     expect(Math.abs(bg.distanceStringToMilesFloat("1 mi", 0)-1.0)).toBeLessThan(.001);
     expect(Math.abs(bg.distanceStringToMilesFloat("0.1 mi", 0)-0.1)).toBeLessThan(.001);
   }),
-  it('check google', () => {
+  it('Check google API calls correctly identify cheated vs acceptable', () => {
     m.setupGlobalMocks();
 
     // Fake coordinates
@@ -45,7 +45,7 @@ describe('Test background', () => {
     expect(m.localChromeStorage.data.tab0.className).toEqual("cheated");
     expect(m.pageAction.path).toEqual('icons/cheated.png')
   }),
-  it('check overwrite', () => {
+  it('Check that multiple instances of the same data is not stored twice, and no analytics sent', () => {
     m.setupGlobalMocks();
 
     // Fake coordinates
@@ -59,13 +59,16 @@ describe('Test background', () => {
     bg.queryGoogleForDistance(dataFromStatement1, 0);
     m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden = true
     expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
+    let numAnalytics = m.allAnalytics.length;
 
-    // Query again - ensure data is not overridden
+    // Query again - ensure data is not overridden, and no analytics sent
     bg.queryGoogleForDistance(dataFromStatement1, 0);
     expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
+    expect(m.allAnalytics.length).toEqual(numAnalytics);
 
-    // Query with a slightly different value - ensure data is overridden
+    // Query with a slightly different value - ensure data is overridden, and analytics sent
     bg.queryGoogleForDistance(dataFromStatement2, 0);
     expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(undefined);
+    expect(m.allAnalytics.length).toBeGreaterThan(numAnalytics);
   });
 })

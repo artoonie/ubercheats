@@ -72,7 +72,9 @@ class ChromePageActionMock {
   }
 }
 
+let allAnalytics = []
 function googleMockAnalytics(send, event, eventCategory, eventAction, eventLabel, eventValue, fieldsObject) {
+  allAnalytics.push([send, event, eventCategory, eventAction, eventLabel, eventValue, fieldsObject]);
 }
 
 let googleMockDirections = {
@@ -100,6 +102,6 @@ function setupGlobalMocks() {
     global.ga = googleMockAnalytics;
 }
 
-module.exports = {localChromeStorage, syncChromeStorage, pageAction,
+module.exports = {localChromeStorage, syncChromeStorage, pageAction, allAnalytics,
                   chromeMock, googleMockDirections, googleMockAnalytics,
                   setupGlobalMocks}
