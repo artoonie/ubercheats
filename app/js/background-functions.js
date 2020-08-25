@@ -215,7 +215,6 @@ function storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle) {
       if (key in data && data[key].percentDifference == newData.percentDifference)
       {
         // Computation hasn't changed, don't send to Google Analytics or store data twice
-        console.log('Data already logged, not sending to GA: ' + key);
         return;
       }
 
