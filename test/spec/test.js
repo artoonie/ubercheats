@@ -40,11 +40,11 @@ class ChromeStorageMock {
   }
   get(key, callback) {
     if (key == null) {
-      return this.data;
+      callback(this.data);
     }
     // This could also be a list of keys but we don't use that
     if (!(key in this.data)) {
-      return {};
+      callback({});
     }
 
     let data = {}
@@ -67,6 +67,8 @@ class ChromePageActionMock {
     this.path = data.path
     this.tabId = data.tabId
   }
+}
+function googleMockAnalytics(send, event, eventCategory, eventAction, eventLabel, eventValue, fieldsObject) {
 }
 googleMock = {
     maps: {
@@ -112,6 +114,7 @@ describe('Test background', () => {
     // Set up "mocks"
     global.google = googleMock;
     global.chrome = chromeMock
+    global.ga = googleMockAnalytics;
 
     // Fake coordinates
     let routeCoordinates = new bg.RouteCoordinates(40.106507, -79.578185, 39.673911, -79.865928);
@@ -132,5 +135,31 @@ describe('Test background', () => {
     // This should be marked as cheated: 25 miles is more than 10% away
     expect(localChromeStorage.data.tab0.className).toEqual("cheated");
     expect(pageAction.path).toEqual('icons/cheated.png')
+  }),
+  it('check overwrite', () => {
+    // Set up "mocks"
+    global.google = googleMock;
+    global.chrome = chromeMock
+    global.ga = googleMockAnalytics;
+
+    // Fake coordinates
+    let routeCoordinatesFake = new bg.RouteCoordinates(1, 2, 3, 4);
+    let tripId = "http://fake/id/";
+    let key = "comparisons_" + tripId;
+    let dataFromStatement1 = new bg.DataFromStatement(32.501, "32.5 mi", routeCoordinatesFake, tripId);
+    let dataFromStatement2 = new bg.DataFromStatement(32.5,   "32.5 mi", routeCoordinatesFake, tripId);
+
+    // Query google
+    bg.queryGoogleForDistance(dataFromStatement1, 0);
+    syncChromeStorage.data[key].customFieldToEnsureNotOverridden = true
+    expect(syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
+
+    // Query again - ensure data is not overridden
+    bg.queryGoogleForDistance(dataFromStatement1, 0);
+    expect(syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
+
+    // Query with a slightly different value - ensure data is overridden
+    bg.queryGoogleForDistance(dataFromStatement2, 0);
+    expect(syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(undefined);
   });
 })
