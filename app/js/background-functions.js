@@ -1,17 +1,33 @@
 'use strict';
 
+class LatLon {
+  constructor(lat, lon) {
+    this.lat = lat;
+    this.lon = lon;
+  }
+}
+
 class RouteCoordinates {
-  constructor(pickupLat, pickupLon, dropoffLat, dropoffLon) {
-    this.pickupLat = pickupLat;
-    this.pickupLon = pickupLon;
-    this.dropoffLat = dropoffLat;
-    this.dropoffLon = dropoffLon;
+  constructor(pickupLatLon) {
+    this.pickupLatLon = pickupLatLon
+    this.dropoffLatLons = []
+  }
+  addDropoff(dropoffLatLon) {
+    this.dropoffLatLons.push(dropoffLatLon);
   }
   getGooglePickup() {
-    return new google.maps.LatLng(parseFloat(this.pickupLat), parseFloat(this.pickupLon));
+    return new google.maps.LatLng(parseFloat(this.pickupLatLon.lat), parseFloat(this.pickupLatLon.lon));
   }
-  getGoogleDropoff() {
-    return new google.maps.LatLng(parseFloat(this.dropoffLat), parseFloat(this.dropoffLon));
+  getGoogleDropoff(i) {
+    let n = this.getNumDropoffLocations();
+    if (i >= n) {
+      console.log(`Invalid dropoff location #${i} requested, but only have ${n} available.`)
+      return null;
+    }
+    return new google.maps.LatLng(parseFloat(this.dropoffLatLons[i].lat), parseFloat(this.dropoffLatLons[i].lon));
+  }
+  getNumDropoffLocations() {
+    return this.dropoffLatLons.length;
   }
 }
 
@@ -97,6 +113,41 @@ function setCheated(message, msgDestination) {
   _setStatus('cheated', message, msgDestination, false)
 }
 
+// Returns the latitude/longitude given a google maps image URL
+// Finds the lat/lon directly preceded by text
+function getLatLonPrecededBy(text, googleImageSource) {
+  var numberRegex = '[-]?[0-9]*';
+  var latOrLonRegex = '(' + numberRegex + '.' + numberRegex + ')';
+  var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex;
+  var pickupRegex = new RegExp(text + latAndLonRegex, 'g');
+  var match = pickupRegex.exec(googleImageSource);
+  if (!match) {
+    return null;
+  }
+  var pickupLatitude = match[1];
+  var pickupLongitude = match[2];
+  return new LatLon(pickupLatitude, pickupLongitude);
+}
+
+function googleImageSourceToRoute(googleImageSource) {
+  // Regex match the source URL, which looks like:
+  // https://[...]car-pickup-pin.png%7Cscale%3A2%7C11.11111111111111%2C-11.11111111111111&[...]
+  //             car-dropoff-pin.png%7Cscale%3A2%7C22.22222222222222%2C-22.22222222222222 // first dropoff
+  //                                            %7C33.33333333333333%2C-33.33333333333333&[...] // additional dropoff
+  let imagesource = googleImageSource;
+  let pickupLatLon = getLatLonPrecededBy(  'car-pickup-pin.png%7Cscale%3A2%7C', imagesource);
+  let dropoffLatLon = getLatLonPrecededBy('car-dropoff-pin.png%7Cscale%3A2%7C', imagesource);
+  let additionalDropoff = getLatLonPrecededBy(dropoffLatLon.lon + '%7C', imagesource);
+
+  let route = new RouteCoordinates(pickupLatLon);
+  route.addDropoff(dropoffLatLon);
+  if (additionalDropoff) {
+    route.addDropoff(additionalDropoff);
+  }
+
+  return route;
+}
+
 // Queries Google Maps for the distance between the start and end points,
 // then asynchronously compares that value to what UberEats paid you for
 function queryGoogleForDistance(dataFromStatement, msgDestination) {
@@ -104,7 +155,7 @@ function queryGoogleForDistance(dataFromStatement, msgDestination) {
 
   let directionsService = new google.maps.DirectionsService();
   let start = coords.getGooglePickup();
-  let end = coords.getGoogleDropoff();
+  let end = coords.getGoogleDropoff(0);
 
   setInfo('Reaching out to Google to compute the distance between ' + start + ' and ' + end, msgDestination);
 
@@ -202,8 +253,9 @@ function computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle) {
     'actualFloat': dataFromGoogle.actualDistanceFloatMi,
     'percentDifference': percentDiff,
     'routeLatLon': {
-        'pickupLatLon': [dataFromStatement.routeCoordinates.pickupLat, dataFromStatement.routeCoordinates.pickupLon],
-        'dropoffLatLon': [dataFromStatement.routeCoordinates.dropoffLat, dataFromStatement.routeCoordinates.dropoffLon],
+        'pickupLatLon': [dataFromStatement.routeCoordinates.pickupLatLon.lat, dataFromStatement.routeCoordinates.pickupLatLon.lon],
+          // TODO make this work for multistop
+        'dropoffLatLon': [dataFromStatement.routeCoordinates.dropoffLatLons[0].lat, dataFromStatement.routeCoordinates.dropoffLatLons[0].lon],
     }
   }
 }
@@ -281,10 +333,7 @@ function callbackFinishedReadingPage(msgDestination, result) {
 
   let tripId = result.tripId;
 
-  let pickupLatLon = result.pickupLatLon;
-  let dropoffLatLon = result.dropoffLatLon;
-  let routeCoordinates = new RouteCoordinates(pickupLatLon[0], pickupLatLon[1], dropoffLatLon[0], dropoffLatLon[1]);
-
+  let route = googleImageSourceToRoute(result.googleImageSource);
   let uberPaidForString = result.uberPaidForString;
   let uberPaidForFloatMi = distanceStringToMilesFloat(uberPaidForString, msgDestination);
 
@@ -293,7 +342,7 @@ function callbackFinishedReadingPage(msgDestination, result) {
     return;
   }
 
-  let dataFromStatement = new DataFromStatement(uberPaidForFloatMi, uberPaidForString, routeCoordinates, tripId);
+  let dataFromStatement = new DataFromStatement(uberPaidForFloatMi, uberPaidForString, route, tripId);
   queryGoogleForDistance(dataFromStatement, msgDestination);
 }
 
@@ -318,8 +367,8 @@ function handleErrorsFromContentScript(msgDestination, returnValue) {
     errorMessage += '"Failed to parse anything"'
     wereThereErrors = true;
   } else {
-    if (!returnValue.pickupLatLon || !returnValue.dropoffLatLon) {
-      errorMessage += `"Failed to parse the pickup/dropoff locations: ${returnValue}"`
+    if (!returnValue.googleImageSource) {
+      errorMessage += `"Failed to parse the google maps image source"`
       wereThereErrors = true;
     } else if (!returnValue.uberPaidForString) {
       errorMessage += '"Failed to parse the distance"'
@@ -377,8 +426,10 @@ module.exports = {DataFromGoogle,
                   DataFromStatement,
                   MessageDestination,
                   RouteCoordinates,
+                  LatLon,
                   computeDataToStoreForSummaryTable,
                   distanceStringToMilesFloat,
+                  googleImageSourceToRoute,
                   queryGoogleForDistance,
                   runCheatDetectorOnTrip,
                   runCheatDetectorOnStatement,

@@ -102,6 +102,14 @@ function setupGlobalMocks() {
     global.ga = googleMockAnalytics;
 }
 
+function createFakeRoute(bg) {
+    let fakePickup = new bg.LatLon(1, 2);
+    let fakeDropoff = new bg.LatLon(3, 4);
+    let routeCoordinatesFake = new bg.RouteCoordinates(fakePickup);
+    routeCoordinatesFake.addDropoff(fakeDropoff);
+    return routeCoordinatesFake;
+}
+
 module.exports = {localChromeStorage, syncChromeStorage, pageAction, allAnalytics,
                   chromeMock, googleMockDirections, googleMockAnalytics,
-                  setupGlobalMocks}
+                  setupGlobalMocks, createFakeRoute}

@@ -1,51 +1,24 @@
 class DataFromContentScript {
-  constructor(pickupLatLon, dropoffLatLon, uberPaidForString, howUberPaidForWasFound, tripId) {
-    this.pickupLatLon = pickupLatLon;
-    this.dropoffLatLon = dropoffLatLon;
+  constructor(googleImageSource, uberPaidForString, howUberPaidForWasFound, tripId) {
+    this.googleImageSource = googleImageSource;
     this.uberPaidForString = uberPaidForString;
     this.howUberPaidForWasFound = howUberPaidForWasFound;
     this.tripId = tripId;
   }
 }
 
-// Returns the latitude/longitude given a google maps image URL
-// pinImageSource is either car-pickup-pin.png or car-dropoff-pin.png
-function getLatLonFor(pinImageSource, googleMapsImageSource) {
-  var numberRegex = '[-]?[0-9]*'
-  var latOrLonRegex = '(' + numberRegex + '.' + numberRegex + ')'
-  var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex
-  var pickupRegex = new RegExp(pinImageSource + '%7Cscale%3A2%7C' + latAndLonRegex, 'g');
-  var match = pickupRegex.exec(googleMapsImageSource)
-  var pickupLatitude = match[1]
-  var pickupLongitude = match[2]
-  return [pickupLatitude, pickupLongitude]
-}
-
-// Reads the page sources and returns a tuple of tuples representing the lat/lon coordinatens
-// of the pickup and dropoff locations.
-function computePickupDropoff(dom) {
+// Reads the page sources and returns the google image source which contains the route.
+function getGoogleImageSource(dom) {
   images = dom.getElementsByTagName('img')
   let i;
-  let googleimage;
+  let googleImageSource = null;
   for (i = 0; i < images.length; i++) {
     if (images[i]['src'].includes('https://maps.googleapis.com')) {
-  	  googleimage = images[i];
+      googleImageSource = images[i]['src'];
   	  break;
     }
   }
-  if (googleimage == undefined) {
-    console.log('Error: could not find google image...this should never happen.');
-    return null;
-  }
-
-  // Regex match the source URL, which looks like:
-  // https://[...]car-pickup-pin.png%7Cscale%3A2%7C11.11111111111111%2C-11.11111111111111&[...]
-  //             car-dropoff-pin.png%7Cscale%3A2%7C22.22222222222222%2C-22.22222222222222&[...]
-  var imagesource = googleimage['src'];
-  var pickupLatLon = getLatLonFor('car-pickup-pin.png', imagesource);
-  var dropoffLatLon = getLatLonFor('car-dropoff-pin.png', imagesource);
-
-  return [pickupLatLon, dropoffLatLon]
+  return googleImageSource;
 }
 
 // Courtesy of https://stackoverflow.com/a/14284815/1057105
@@ -111,12 +84,12 @@ function getTripId() {
 
 // Compute and return all data
 function getAllData() {
-  let pickupDropoff = computePickupDropoff(document);
+  let googleImageSource = getGoogleImageSource(document);
   let uberPaidForDistanceTuple = readUberPaidForDistance(document);
   let tripId = getTripId();
 
   return new DataFromContentScript(
-    pickupDropoff[0], pickupDropoff[1],
+    googleImageSource,
     uberPaidForDistanceTuple[0], uberPaidForDistanceTuple[1],
     tripId);
 }
