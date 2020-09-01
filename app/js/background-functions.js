@@ -1,125 +1,139 @@
 'use strict';
 
-class RouteCoordinates {
-  constructor(pickupLat, pickupLon, dropoffLat, dropoffLon) {
-    this.pickupLat = pickupLat;
-    this.pickupLon = pickupLon;
-    this.dropoffLat = dropoffLat;
-    this.dropoffLon = dropoffLon;
-  }
-  getGooglePickup() {
-    return new google.maps.LatLng(parseFloat(this.pickupLat), parseFloat(this.pickupLon));
-  }
-  getGoogleDropoff() {
-    return new google.maps.LatLng(parseFloat(this.dropoffLat), parseFloat(this.dropoffLon));
-  }
-}
-
-class DataFromStatement {
-  constructor(uberPaidForFloatMi, uberPaidForString, routeCoordinates, tripId) {
-    this.uberPaidForFloatMi = uberPaidForFloatMi;
-    this.uberPaidForString = uberPaidForString;
-    this.routeCoordinates = routeCoordinates;
-    this.tripId = tripId;
-  }
-}
-
-class DataFromGoogle {
-  constructor(actualDistanceFloatMi, actualDistanceString) {
-    this.actualDistanceFloatMi = actualDistanceFloatMi;
-    this.actualDistanceString = actualDistanceString;
-  }
-}
+const { LatLon,
+        RouteCoordinates,
+        DataFromStatement,
+        DataFromGoogle,
+        MessageDestination } = require('./classes.js')
+const models = require('./models.js');
 
 // Sets the extension icon
-function setIcon(iconName, tabId) {
-  chrome.pageAction.setIcon({
-      path: 'icons/' + iconName,
-      tabId: tabId
-  });
+function setIcon(iconName, msgDestination) {
+  if (msgDestination.frameId == 0) {
+    chrome.pageAction.setIcon({
+        path: 'icons/' + iconName,
+        tabId: msgDestination.tabId
+    });
+  }
 }
 
 // Sets the status using the storage API to pass it to the popup
-function _setStatus(className, text, tabId, showTutorialVideo) {
+function _setStatus(className, text, msgDestination, showTutorialVideo) {
   let status = {
     className: className,
     text: text,
     showTutorialVideo: showTutorialVideo
   };
-  let key = 'tab' + tabId;
+  let key = msgDestination.makeKeyFor();
   let storedObject = {}
   storedObject[key] = status
   chrome.storage.local.set(storedObject);
 }
 
 // Sets an error message
-function setError(errorMessage, tabId) {
-  setIcon('error.png', tabId);
+function setError(errorMessage, msgDestination) {
+  console.log('Error: ' + errorMessage)
+
+  setIcon('error.png', msgDestination);
   let text = '<strong>Encountered an error.</strong><br/>';
   text += errorMessage;
   text += '<br/><br/>Please contact the developer at ubercheats@arminsamii.com to address this.';
-  _setStatus('warning', text, tabId, true)
+  _setStatus('warning', text, msgDestination, true)
 }
 
 // Sets a tutorial message
-function setTut(message, tabId) {
+function setTut(message, msgDestination) {
   message = 'Next step: ' + message
-  _setStatus('info', message, tabId, true)
+  _setStatus('info', message, msgDestination, true)
 }
 
 // Sets an info message
-function setInfo(message, tabId) {
-  _setStatus('info', message, tabId, true)
+function setInfo(message, msgDestination) {
+  _setStatus('info', message, msgDestination, true)
 }
 
 // Sets a message signifying UberEats paid you fairly
-function setAcceptable(message, tabId) {
-  setIcon('acceptable.png', tabId);
-  _setStatus('acceptable', message, tabId, false)
+function setAcceptable(message, msgDestination) {
+  setIcon('acceptable.png', msgDestination);
+  _setStatus('acceptable', message, msgDestination, false)
 }
 
 // Sets a message signifying UberEats underpaid you
-function setCheated(message, tabId) {
-  setIcon('cheated.png', tabId);
-  _setStatus('cheated', message, tabId, false)
+function setCheated(message, msgDestination) {
+  setIcon('cheated.png', msgDestination);
+  _setStatus('cheated', message, msgDestination, false)
 }
 
-// Gets the lat/lon coordinates given a Google Maps API URL
-function getLatLonFor(pinImageSource, googleMapsImageSource) {
-  var numberRegex = '[-]?[0-9]*'
-  var latOrLonRegex = `(" + numberRegex + "." + numberRegex + ")`
-  var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex
-  var pickupRegex = new RegExp(pinImageSource + '%7Cscale%3A2%7C' + latAndLonRegex, 'g');
-  var match = pickupRegex.exec(googleMapsImageSource)
-  var pickupLatitude = match[1]
-  var pickupLongitude = match[2]
-  return [pickupLatitude, pickupLongitude]
+// Returns the latitude/longitude given a google maps image URL
+// Finds the lat/lon directly preceded by text
+function getLatLonPrecededBy(text, googleImageSource) {
+  var numberRegex = '[-]?[0-9]*';
+  var latOrLonRegex = '(' + numberRegex + '.' + numberRegex + ')';
+  var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex;
+  var pickupRegex = new RegExp(text + latAndLonRegex, 'g');
+  var match = pickupRegex.exec(googleImageSource);
+  if (!match) {
+    return null;
+  }
+  var pickupLatitude = match[1];
+  var pickupLongitude = match[2];
+  return new LatLon(pickupLatitude, pickupLongitude);
+}
+
+function googleImageSourceToRoute(googleImageSource) {
+  // Regex match the source URL, which looks like:
+  // https://[...]car-pickup-pin.png%7Cscale%3A2%7C11.11111111111111%2C-11.11111111111111&[...]
+  //             car-dropoff-pin.png%7Cscale%3A2%7C22.22222222222222%2C-22.22222222222222 // last dropoff
+  //                                            %7C33.33333333333333%2C-33.33333333333333&[...] // additional dropoff (waypoint)
+  let imagesource = googleImageSource;
+  let pickupLatLon = getLatLonPrecededBy(  'car-pickup-pin.png%7Cscale%3A2%7C', imagesource);
+  let endDropoffLatLon = getLatLonPrecededBy('car-dropoff-pin.png%7Cscale%3A2%7C', imagesource);
+  let additionalDropoff = getLatLonPrecededBy(endDropoffLatLon.lon + '%7C', imagesource);
+
+  let route = new RouteCoordinates(pickupLatLon);
+  if (additionalDropoff) {
+    route.addDropoff(additionalDropoff);
+  }
+  route.addDropoff(endDropoffLatLon);
+
+  return route;
 }
 
 // Queries Google Maps for the distance between the start and end points,
 // then asynchronously compares that value to what UberEats paid you for
-function queryGoogleForDistance(dataFromStatement, tabId) {
+function queryGoogleForDistance(dataFromStatement, msgDestination) {
   let coords = dataFromStatement.routeCoordinates;
 
   let directionsService = new google.maps.DirectionsService();
   let start = coords.getGooglePickup();
-  let end = coords.getGoogleDropoff();
 
-  setInfo('Reaching out to Google to compute the distance between ' + start + ' and ' + end, tabId);
+  let numDropoffs = coords.getNumDropoffLocations();
+  let end = coords.getGoogleDropoff(numDropoffs-1);
+
+  let waypoints = [];
+  for (let i = 0; i < numDropoffs-1; ++i) {
+      waypoints.push({
+          location: coords.getGoogleDropoff(i),
+          stopover: true
+      });
+  }
+
+  setInfo('Reaching out to Google to compute the distance ' + coords, msgDestination);
 
   const route = {
     origin: start,
     destination: end,
+    waypoints: waypoints,
     travelMode: 'DRIVING'
   }
 
   directionsService.route(route, function(response, status) {
-    callbackDirectionsComplete(response, status, dataFromStatement, tabId);
+    callbackDirectionsComplete(response, status, dataFromStatement, msgDestination);
   });
 }
 
 // Converts "1.2 mi" or "6 km" to the float equivalent in miles
-function distanceStringToMilesFloat(distanceString, tabId) {
+function distanceStringToMilesFloat(distanceString, msgDestination) {
   var mileageRegex = new RegExp('([0-9]*\.?[0-9]*) (mi|km)', 'g');
   
   // Get the uber match
@@ -131,7 +145,7 @@ function distanceStringToMilesFloat(distanceString, tabId) {
     setError('Could not parse mileages:<br/>' +
              '<br/>string=' + distanceString +
              '<br/>match=' + match,
-             tabId);
+             msgDestination);
     return null;
   }
 
@@ -140,7 +154,7 @@ function distanceStringToMilesFloat(distanceString, tabId) {
   // Error handling: This shouldn't happen.
   if (isNaN(floatValueMiOrKm))
   {
-    setError('Could not parse float for: ' + match[1]);
+    setError('Could not parse float for: ' + match[1], msgDestination);
     return null;
   }
 
@@ -159,19 +173,19 @@ function calculatePercentDiff(dataFromStatement, dataFromGoogle) {
 }
 
 // Using the provided distances, determines what message and icon should be shown to the user
-function compareDistancesAndSetPopupText(dataFromStatement, dataFromGoogle, tabId) {
+function compareDistancesAndSetPopupText(dataFromStatement, dataFromGoogle, msgDestination) {
   var percentDiff = calculatePercentDiff(dataFromStatement, dataFromGoogle);
   if (dataFromGoogle.actualDistanceFloatMi <= dataFromStatement.uberPaidForFloatMi) {
-    setAcceptable('As best I can tell, you were paid fairly.', tabId);
+    setAcceptable('As best I can tell, you were paid fairly.', msgDestination);
   } else if (percentDiff < 0.10) {
-    setAcceptable(`You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.`, tabId);
+    setAcceptable(`You were underpaid by less than 10% - I don't see a problem here, probably just the difference between Uber and Google's algorithms.`, msgDestination);
   } else {
     let helpUrlReddit = 'https://www.reddit.com/r/UberEATS/comments/icdu0y/ubercheats_is_now_live_check_if_ubereats_has/' // also in popup.js
     let helpUrlTwitter = 'https://twitter.com/ArminSamii/status/1295857106080456706' // also in popup.js
     let text = 'Uber paid you for ' + dataFromStatement.uberPaidForString + ' but the travel distance was actually ' + dataFromGoogle.actualDistanceString + '.<br/><br/>'
     text += '<br/>Want to do something about it? Call UberEATS support, ask for a supervisor, and explain that you were underpaid.'
     text += '<br/>If you need advice getting paid fairly, reach out on <a href=\"' + helpUrlReddit + '\" target=\"_blank\">Reddit</a> or <a href=\"' + helpUrlTwitter + '\" target=\"_blank\">Twitter</a>.'
-    setCheated(text, tabId);
+    setCheated(text, msgDestination);
   }
 }
 
@@ -193,18 +207,7 @@ function logToGoogleAnalytics(dataFromGoogle, dataFromStatement) {
 // Callback for when storeAndAnalyzeDistances reads the key.
 function computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle) {
   var percentDiff = calculatePercentDiff(dataFromStatement, dataFromGoogle);
-  return {
-    'url': dataFromStatement.tripId,
-    'uberPaidForDistance': dataFromStatement.uberPaidForString,
-    'actualDistance': dataFromGoogle.actualDistanceString,
-    'uberPaidForFloat': dataFromStatement.uberPaidForFloatMi,
-    'actualFloat': dataFromGoogle.actualDistanceFloatMi,
-    'percentDifference': percentDiff,
-    'routeLatLon': {
-        'pickupLatLon': [dataFromStatement.routeCoordinates.pickupLat, dataFromStatement.routeCoordinates.pickupLon],
-        'dropoffLatLon': [dataFromStatement.routeCoordinates.dropoffLat, dataFromStatement.routeCoordinates.dropoffLon],
-    }
-  }
+  return new models.StoredData_V0_5(dataFromStatement, dataFromGoogle, percentDiff)
 }
 
 // Store locally and send to google analytics if this URL is unique
@@ -227,72 +230,78 @@ function storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle) {
 }
 
 // Converts to miles, compares the distances, saves to local cache, and sends to google analytics
-function compareDistances(dataFromStatement, dataFromGoogle, tabId) {
+function compareDistances(dataFromStatement, dataFromGoogle, msgDestination) {
   // Analyze the distance and show result to user
-  compareDistancesAndSetPopupText(dataFromStatement, dataFromGoogle, tabId);
+  compareDistancesAndSetPopupText(dataFromStatement, dataFromGoogle, msgDestination);
 
   // Accumulate data locally and on Google Analytics
   storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle);
 }
 
+function getTotalDistanceOfAllLegsMeters(legs) {
+  return legs.reduce((totalDistance, leg) => totalDistance + leg.distance.value, 0);
+}
+
+function metersToMiles(meters) {
+  return meters / 1609.34;
+}
+
 // Callback for when the Google Maps API returns directions
-function callbackDirectionsComplete(response, status, dataFromStatement, tabId) {
-  setInfo('Directions request received from google.', tabId)
+function callbackDirectionsComplete(response, status, dataFromStatement, msgDestination) {
+  setInfo('Directions request received from google.', msgDestination)
 
   if (status !== 'OK') {
-    setError('Directions request failed due to ' + status, tabId);
+    setError('Directions request failed due to ' + status, msgDestination);
     return -1;
-  } else {
-    let directionsData = response.routes[0].legs[0]; // Get data about the mapped route
-    if (!directionsData) {
-      setError('Directions request failed', tabId);
-      return -1;
-    }
-    else {
-      // Success! Find the shortest-distance route to give Uber the benefit of the doubt
-      let minRouteMeters = 9999999999;
-      let legOfShortestRoute = directionsData;
-      response.routes.forEach(function(route, routeIndex, array) {
-        let thisRouteDistanceMeters = route.legs[0].distance.value
-        if (thisRouteDistanceMeters < minRouteMeters)
-        {
-          minRouteMeters = thisRouteDistanceMeters;
-          legOfShortestRoute = route.legs[0];
-        }
-      });
-      let actualDistanceString = legOfShortestRoute.distance.text;
-      let actualDistanceFloatMi = distanceStringToMilesFloat(actualDistanceString);
-      if (actualDistanceFloatMi == null) {
-        //error
-        return;
-      }
-      let dataFromGoogle = new DataFromGoogle(actualDistanceFloatMi, actualDistanceString)
-
-      compareDistances(dataFromStatement, dataFromGoogle, tabId);
-    }
   }
+
+  let legs = response.routes[0].legs; // Get data about the mapped route
+  if (!legs) {
+    setError('Directions request failed', msgDestination);
+    return -1;
+  }
+
+  // Success! Find the shortest-distance route to give Uber the benefit of the doubt
+  let bignumber = 9999999999;
+  let minRouteMeters = bignumber;
+  let legsOfShortestRoute = legs;
+  response.routes.forEach(function(route, routeIndex, array) {
+    let thisRouteDistanceMeters = getTotalDistanceOfAllLegsMeters(route.legs);
+    if (thisRouteDistanceMeters < minRouteMeters) {
+      minRouteMeters = thisRouteDistanceMeters;
+      legsOfShortestRoute = route.legs;
+    }
+  });
+  if (minRouteMeters == bignumber) {
+    // Nothing happened in loop - this is an error
+    setError('Could not find a valid route from google maps', msgDestination);
+    return;
+  }
+  let actualDistanceString = legsOfShortestRoute.map(leg => leg.distance.text).join(' + ')
+  let actualDistanceFloatMi = metersToMiles(minRouteMeters);
+  let dataFromGoogle = new DataFromGoogle(actualDistanceFloatMi, actualDistanceString)
+
+  compareDistances(dataFromStatement, dataFromGoogle, msgDestination);
 }
 
 // Callback for when the content-script finished running and returned data from the page
-function callbackFinishedReadingPage(tabId, result) {
-  setIcon('loading128.gif', tabId)
+function callbackFinishedReadingPage(msgDestination, result) {
+  console.log('finished reading page');
+  setIcon('loading128.gif', msgDestination)
 
   let tripId = result.tripId;
 
-  let pickupLatLon = result.pickupLatLon;
-  let dropoffLatLon = result.dropoffLatLon;
-  let routeCoordinates = new RouteCoordinates(pickupLatLon[0], pickupLatLon[1], dropoffLatLon[0], dropoffLatLon[1]);
-
+  let route = googleImageSourceToRoute(result.googleImageSource);
   let uberPaidForString = result.uberPaidForString;
-  let uberPaidForFloatMi = distanceStringToMilesFloat(uberPaidForString, tabId);
+  let uberPaidForFloatMi = distanceStringToMilesFloat(uberPaidForString, msgDestination);
 
   if (uberPaidForFloatMi == null) {
     // error
     return;
   }
 
-  let dataFromStatement = new DataFromStatement(uberPaidForFloatMi, uberPaidForString, routeCoordinates, tripId);
-  queryGoogleForDistance(dataFromStatement, tabId);
+  let dataFromStatement = new DataFromStatement(uberPaidForFloatMi, uberPaidForString, route, tripId);
+  queryGoogleForDistance(dataFromStatement, msgDestination);
 }
 
 function handleAnalyticsFromContentScript(returnValue) {
@@ -305,7 +314,7 @@ function handleAnalyticsFromContentScript(returnValue) {
 }
 
 // Returns true if there were errors
-function handleErrorsFromContentScript(tabId, returnValue) {
+function handleErrorsFromContentScript(msgDestination, returnValue) {
   let errorMessage = 'Could not find the data we were looking for on this page. '
   errorMessage += `If you're okay with it, can you hit Ctrl+S to save the page data, `
   errorMessage += 'then attach it in an email to the developer, along with this message:'
@@ -316,8 +325,8 @@ function handleErrorsFromContentScript(tabId, returnValue) {
     errorMessage += '"Failed to parse anything"'
     wereThereErrors = true;
   } else {
-    if (!returnValue.pickupLatLon || !returnValue.dropoffLatLon) {
-      errorMessage += `"Failed to parse the pickup/dropoff locations: ${returnValue}"`
+    if (!returnValue.googleImageSource) {
+      errorMessage += `"Failed to parse the google maps image source"`
       wereThereErrors = true;
     } else if (!returnValue.uberPaidForString) {
       errorMessage += '"Failed to parse the distance"'
@@ -326,39 +335,62 @@ function handleErrorsFromContentScript(tabId, returnValue) {
   }
 
   if (wereThereErrors) {
-    setError(errorMessage, tabId);
+    setError(errorMessage, msgDestination);
   }
 
   return wereThereErrors;
 }
 
-// Runs the end-to-end cheat detector
-function runCheatDetector(tabId) {
+// Runs the end-to-end cheat detector for a single trip
+function runCheatDetectorOnTrip(msgDestination) {
   chrome.tabs.executeScript(
-      tabId,
+      msgDestination.tabId,
       {
        file: 'js/contentScript.js',
-       runAt: 'document_idle'
+       runAt: 'document_idle',
+       frameId: msgDestination.frameId
       },
       function(result) {
         let returnValue = result[0];
 
         handleAnalyticsFromContentScript(returnValue);
-        let wereThereErrors = handleErrorsFromContentScript(tabId, returnValue);
+        let wereThereErrors = handleErrorsFromContentScript(msgDestination, returnValue);
         if (!wereThereErrors) {
-          callbackFinishedReadingPage(tabId, returnValue);
+          callbackFinishedReadingPage(msgDestination, returnValue);
         }
+      }
+  )
+}
+
+// Runs the end-to-end cheat detector for a single trip
+function runCheatDetectorOnStatement(msgDestination) {
+  chrome.tabs.executeScript(
+      msgDestination.tabId,
+      {
+       file: 'js/contentScriptStatement.js',
+       runAt: 'document_idle',
+       frameId: msgDestination.frameId
+      },
+      function(result) {
+        let returnValue = result[0];
+        let numTrips = returnValue.length;
+        let messageString = `Found ${numTrips} trips in this statement.<br/>Note: you no longer need to click each trip in this statement.`;
+        setInfo(messageString, msgDestination);
       }
   )
 }
 
 module.exports = {DataFromGoogle,
                   DataFromStatement,
+                  MessageDestination,
                   RouteCoordinates,
+                  LatLon,
                   computeDataToStoreForSummaryTable,
                   distanceStringToMilesFloat,
+                  googleImageSourceToRoute,
                   queryGoogleForDistance,
-                  runCheatDetector,
+                  runCheatDetectorOnTrip,
+                  runCheatDetectorOnStatement,
                   setError,
                   setIcon,
                   setInfo,

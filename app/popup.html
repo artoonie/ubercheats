@@ -66,7 +66,7 @@
   </head>
   <body>
     <h3>Did UberEats steal from me?</h3>
-    <i>Uber <a href="https://www.youtube.com/watch?v=nNI2kVAyEQ4" target="_blank">has admitted</a> to systematically underpaying delivery drivers and bikers. Find out how much you've been underpaid on each trip.</i>
+    <i>Uber <a href="https://www.youtube.com/watch?v=nNI2kVAyEQ4" target="_blank">has admitted</a> to a bug occasionally causing delivery drivers and bikers to be underpaid. Find out how much you've been underpaid on each trip.</i>
 
     <div class="info" id="status">Initializing...if this message doesn't go away, try refreshing the page</div>
 
@@ -74,6 +74,18 @@
         Need help using UberCheats? Watch the <a href="https://www.youtube.com/watch?v=1k2YYlb21N8" target="_blank">tutorial video</a>:
         <br/><br/>
         <iframe width="400" height="225" src="https://www.youtube-nocookie.com/embed/1k2YYlb21N8" frameborder="0" allow="encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <i>Note: you no longer need to click on each trip. Just open each statement, then click the Show Summary button below to see all trips in that statement.</i>
+    </div>
+
+    <div class="acceptable" id="releaseNotes">
+    <b>Release notes for v0.5:</b>
+    <ol>
+      <li><b>Automatic trip reading</b> from the Statement: you no longer need to click each Trip, just click each Weekly Statement</li>
+      <li>Support for the new Uber UI for <b>multi-stop trips</b></li>
+      <li>Better UI for kilometers</li>
+      <li>Better support for Taiwanese users</li>
+    </ol>
+    <button id="hideReleaseNotesButton">Hide release notes</button>
     </div>
 
     <button id="summaryButton">Show summary of all trips seen so far</button>

@@ -50,11 +50,12 @@ var options = {
     new CleanWebpackPlugin(),
     // expose and write the allowed env vars on the compiled bundle
     new webpack.EnvironmentPlugin(["NODE_ENV"]),
-    new CopyWebpackPlugin([{
+    new CopyWebpackPlugin([
       // have to copy this, can't minify or let node touch it because node wraps it in
       // a function which makes it not return the value we expect
-      from: "app/js/contentScript.js"
-    }]),
+      { from: "app/js/contentScript.js" },
+      { from: "app/js/contentScriptStatement.js" }
+    ]),
     new HtmlWebpackPlugin({
       template: path.join(__dirname, "app", "popup.html"),
       filename: "popup.html",

@@ -1,7 +1,45 @@
 class GoogleMockDirectionsService {
   constructor() {}
   route(route, callback) {
-    let response = {routes: [{
+    let response;
+    if (route.waypoints.length > 0) {
+      response = this.routeWithWaypoints();
+    }
+    else {
+      response = this.routeWithMultipleResponses();
+    }
+    let status = "OK";
+    callback(response, status);
+  }
+  routeWithWaypoints() {
+    return {
+      routes: [{
+        legs: [
+          {
+            distance: {
+              value: 1609.34*1, // meters
+              text: "1 mi"
+            }
+          },
+          {
+            distance: {
+              value: 1609.34*2, // meters
+              text: "2 mi"
+            }
+          },
+          {
+            distance: {
+              value: 1609.34*3, // meters
+              text: "3 mi"
+            }
+          }
+        ]
+      }]
+    };
+  }
+  routeWithMultipleResponses() {
+    return {
+      routes: [{
         legs: [{
           distance: {
             value: 2*56327, // meters
@@ -24,8 +62,6 @@ class GoogleMockDirectionsService {
         }]
       }]
     };
-    let status = "OK";
-    callback(response, status);
   }
 }
 
@@ -102,6 +138,14 @@ function setupGlobalMocks() {
     global.ga = googleMockAnalytics;
 }
 
+function createFakeRoute(bg) {
+    let fakePickup = new bg.LatLon(1, 2);
+    let fakeDropoff = new bg.LatLon(3, 4);
+    let routeCoordinatesFake = new bg.RouteCoordinates(fakePickup);
+    routeCoordinatesFake.addDropoff(fakeDropoff);
+    return routeCoordinatesFake;
+}
+
 module.exports = {localChromeStorage, syncChromeStorage, pageAction, allAnalytics,
                   chromeMock, googleMockDirections, googleMockAnalytics,
-                  setupGlobalMocks}
+                  setupGlobalMocks, createFakeRoute}
