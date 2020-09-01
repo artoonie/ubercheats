@@ -143,6 +143,18 @@ function showSummary() {
   });
 }
 
+// On button click to hide release notes. Gets reset each chrome restart or extension install.
+function hideReleaseNotes() {
+  document.getElementById('releaseNotes').style.display = 'none';
+  chrome.storage.local.set({'hidereleasenotes': true});
+}
+chrome.storage.local.get('hidereleasenotes', function(data) {
+  if ('hidereleasenotes' in data) {
+    // Eventually: have button to show release notes here
+    document.getElementById('releaseNotes').style.display = 'none';
+  }
+});
+
 // When the popup opens, get the current tab ID, then check the local storage
 // to find that key.
 window.onload = function() {
@@ -163,3 +175,4 @@ window.onload = function() {
 
 loadGoogleAnalytics('popup');
 document.getElementById('summaryButton').addEventListener('click', showSummary);
+document.getElementById('hideReleaseNotesButton').addEventListener('click', hideReleaseNotes);
