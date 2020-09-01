@@ -1,5 +1,6 @@
 const m = require('./mocks.js');
 const bg = require('../../app/js/background-functions.js');
+const models = require('../../app/js/models.js');
 
 describe('Test background', () => {
   it('Check the data sent to popup - which must not change to maintain backwards compatibility', () => {
@@ -9,11 +10,11 @@ describe('Test background', () => {
     let data = bg.computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle);
     expect(data.url).toEqual("http://fake/tripid/0");
     expect(data.percentDifference).toBeGreaterThan(1.1); // the threshold at which we complain
-    expect(data.actualFloat).toEqual(5.5);
-    expect(data.uberPaidForFloat).toEqual(1.0);
-    expect(data.routeLatLon).toEqual({
+    expect(data.actualDistanceFloatMi).toEqual(5.5);
+    expect(data.uberPaidForFloatMi).toEqual(1.0);
+    expect(data.route).toEqual({
         pickupLatLon: [1, 2],
-        dropoffLatLon: [3, 4]
+        dropoffLatLons: [[3, 4]]
     });
   }),
   it('Check conversion from km to mi', () => {
@@ -33,8 +34,8 @@ describe('Test background', () => {
     let multistopRoute = bg.googleImageSourceToRoute(multistopUrl);
     expect(multistopRoute.getNumDropoffLocations()).toEqual(2);
     expect(multistopRoute.pickupLatLon).toEqual(singlestopRoute.pickupLatLon);
-    expect(multistopRoute.dropoffLatLons[0]).toEqual(singlestopRoute.dropoffLatLons[0]);
-    expect(multistopRoute.dropoffLatLons[1]).toEqual(new bg.LatLon('55.555555', '-66.666666'));
+    expect(multistopRoute.dropoffLatLons[0]).toEqual(new bg.LatLon('55.555555', '-66.666666'));
+    expect(multistopRoute.dropoffLatLons[1]).toEqual(singlestopRoute.dropoffLatLons[0]);
   }),
   it('Check google API calls correctly identify cheated vs acceptable', () => {
     m.setupGlobalMocks();
@@ -65,6 +66,30 @@ describe('Test background', () => {
     expect(m.localChromeStorage.data.tab10_0.className).toEqual("cheated");
     expect(m.pageAction.path).toEqual('icons/cheated.png')
   }),
+  it('Check google API calls can handle multi-leg routes', () => {
+    m.setupGlobalMocks();
+
+    // Multi-stop trip
+    let dropoff2 = new bg.LatLon(55.1, 66.2);
+    let dropoff3 = new bg.LatLon(11.1, 22.2);
+    let routeCoordinatesFake = m.createFakeRoute(bg);
+    routeCoordinatesFake.addDropoff(dropoff2);
+    routeCoordinatesFake.addDropoff(dropoff3);
+    let tripId = "http://fake/id/"
+    let dataFromStatement = new bg.DataFromStatement(3.0, "3.0 mi", routeCoordinatesFake, tripId);
+
+    // Fake message destination
+    let messageDestination = new bg.MessageDestination(10, 0);
+
+    // Query google (with fake, synchronous callbacks)
+    bg.queryGoogleForDistance(dataFromStatement, messageDestination);
+
+    // Ensure the distance is as expected
+    let key = "comparisons_" + tripId;
+    expect(m.syncChromeStorage.data[key].route.dropoffLatLons.length).toEqual(3);
+    expect(m.syncChromeStorage.data[key].actualDistanceFloatMi).toEqual(6);
+    expect(m.syncChromeStorage.data[key].actualDistanceString).toEqual('1 mi + 2 mi + 3 mi');
+  }),
   it('Check that multiple instances of the same data is not stored twice, and no analytics sent', () => {
     m.setupGlobalMocks();
 
@@ -92,5 +117,23 @@ describe('Test background', () => {
     bg.queryGoogleForDistance(dataFromStatement2, messageDestination);
     expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(undefined);
     expect(m.allAnalytics.length).toBeGreaterThan(numAnalytics);
+  }),
+  it('Check migration from v04 to v05 model', () => {
+    m.setupGlobalMocks();
+
+    // Fake coordinates
+    let routeCoordinatesFake = m.createFakeRoute(bg);
+    let tripId = "http://fake/id/";
+    let key = "comparisons_" + tripId;
+    let dataFromStatement = new bg.DataFromStatement(32.501, "32.5 mi", routeCoordinatesFake, tripId);
+    let dataFromGoogle = new bg.DataFromGoogle(5.5, "5.5 mi");
+    let fakePercentDiff = 1.2;
+
+    let v04 = new models.StoredData_V0_4(dataFromStatement, dataFromGoogle, fakePercentDiff);
+    let v05 = new models.StoredData_V0_5(dataFromStatement, dataFromGoogle, fakePercentDiff);
+    let v05_migrated_explicitly = new models.StoredData_V0_5(v04);
+    expect(v05_migrated_explicitly).toEqual(v05);
+    let v05_migrated_implicitly = models.migrateToLatest(v04);
+    expect(v05_migrated_explicitly).toEqual(v05_migrated_implicitly);
   });
 })

@@ -1,62 +1,11 @@
 'use strict';
 
-class LatLon {
-  constructor(lat, lon) {
-    this.lat = lat;
-    this.lon = lon;
-  }
-}
-
-class RouteCoordinates {
-  constructor(pickupLatLon) {
-    this.pickupLatLon = pickupLatLon
-    this.dropoffLatLons = []
-  }
-  addDropoff(dropoffLatLon) {
-    this.dropoffLatLons.push(dropoffLatLon);
-  }
-  getGooglePickup() {
-    return new google.maps.LatLng(parseFloat(this.pickupLatLon.lat), parseFloat(this.pickupLatLon.lon));
-  }
-  getGoogleDropoff(i) {
-    let n = this.getNumDropoffLocations();
-    if (i >= n) {
-      console.log(`Invalid dropoff location #${i} requested, but only have ${n} available.`)
-      return null;
-    }
-    return new google.maps.LatLng(parseFloat(this.dropoffLatLons[i].lat), parseFloat(this.dropoffLatLons[i].lon));
-  }
-  getNumDropoffLocations() {
-    return this.dropoffLatLons.length;
-  }
-}
-
-class DataFromStatement {
-  constructor(uberPaidForFloatMi, uberPaidForString, routeCoordinates, tripId) {
-    this.uberPaidForFloatMi = uberPaidForFloatMi;
-    this.uberPaidForString = uberPaidForString;
-    this.routeCoordinates = routeCoordinates;
-    this.tripId = tripId;
-  }
-}
-
-class DataFromGoogle {
-  constructor(actualDistanceFloatMi, actualDistanceString) {
-    this.actualDistanceFloatMi = actualDistanceFloatMi;
-    this.actualDistanceString = actualDistanceString;
-  }
-}
-
-class MessageDestination {
-  constructor(tabId, frameId) {
-    this.tabId = tabId;
-    this.frameId = frameId;
-  }
-
- makeKeyFor() {
-   return 'tab' + this.tabId + '_' + this.frameId;
- }
-}
+const { LatLon,
+        RouteCoordinates,
+        DataFromStatement,
+        DataFromGoogle,
+        MessageDestination } = require('./classes.js')
+const models = require('./models.js');
 
 // Sets the extension icon
 function setIcon(iconName, msgDestination) {
@@ -83,6 +32,8 @@ function _setStatus(className, text, msgDestination, showTutorialVideo) {
 
 // Sets an error message
 function setError(errorMessage, msgDestination) {
+  console.log('Error: ' + errorMessage)
+
   setIcon('error.png', msgDestination);
   let text = '<strong>Encountered an error.</strong><br/>';
   text += errorMessage;
@@ -132,18 +83,18 @@ function getLatLonPrecededBy(text, googleImageSource) {
 function googleImageSourceToRoute(googleImageSource) {
   // Regex match the source URL, which looks like:
   // https://[...]car-pickup-pin.png%7Cscale%3A2%7C11.11111111111111%2C-11.11111111111111&[...]
-  //             car-dropoff-pin.png%7Cscale%3A2%7C22.22222222222222%2C-22.22222222222222 // first dropoff
-  //                                            %7C33.33333333333333%2C-33.33333333333333&[...] // additional dropoff
+  //             car-dropoff-pin.png%7Cscale%3A2%7C22.22222222222222%2C-22.22222222222222 // last dropoff
+  //                                            %7C33.33333333333333%2C-33.33333333333333&[...] // additional dropoff (waypoint)
   let imagesource = googleImageSource;
   let pickupLatLon = getLatLonPrecededBy(  'car-pickup-pin.png%7Cscale%3A2%7C', imagesource);
-  let dropoffLatLon = getLatLonPrecededBy('car-dropoff-pin.png%7Cscale%3A2%7C', imagesource);
-  let additionalDropoff = getLatLonPrecededBy(dropoffLatLon.lon + '%7C', imagesource);
+  let endDropoffLatLon = getLatLonPrecededBy('car-dropoff-pin.png%7Cscale%3A2%7C', imagesource);
+  let additionalDropoff = getLatLonPrecededBy(endDropoffLatLon.lon + '%7C', imagesource);
 
   let route = new RouteCoordinates(pickupLatLon);
-  route.addDropoff(dropoffLatLon);
   if (additionalDropoff) {
     route.addDropoff(additionalDropoff);
   }
+  route.addDropoff(endDropoffLatLon);
 
   return route;
 }
@@ -155,13 +106,24 @@ function queryGoogleForDistance(dataFromStatement, msgDestination) {
 
   let directionsService = new google.maps.DirectionsService();
   let start = coords.getGooglePickup();
-  let end = coords.getGoogleDropoff(0);
 
-  setInfo('Reaching out to Google to compute the distance between ' + start + ' and ' + end, msgDestination);
+  let numDropoffs = coords.getNumDropoffLocations();
+  let end = coords.getGoogleDropoff(numDropoffs-1);
+
+  let waypoints = [];
+  for (let i = 0; i < numDropoffs-1; ++i) {
+      waypoints.push({
+          location: coords.getGoogleDropoff(i),
+          stopover: true
+      });
+  }
+
+  setInfo('Reaching out to Google to compute the distance ' + coords, msgDestination);
 
   const route = {
     origin: start,
     destination: end,
+    waypoints: waypoints,
     travelMode: 'DRIVING'
   }
 
@@ -192,7 +154,7 @@ function distanceStringToMilesFloat(distanceString, msgDestination) {
   // Error handling: This shouldn't happen.
   if (isNaN(floatValueMiOrKm))
   {
-    setError('Could not parse float for: ' + match[1]);
+    setError('Could not parse float for: ' + match[1], msgDestination);
     return null;
   }
 
@@ -245,19 +207,7 @@ function logToGoogleAnalytics(dataFromGoogle, dataFromStatement) {
 // Callback for when storeAndAnalyzeDistances reads the key.
 function computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle) {
   var percentDiff = calculatePercentDiff(dataFromStatement, dataFromGoogle);
-  return {
-    'url': dataFromStatement.tripId,
-    'uberPaidForDistance': dataFromStatement.uberPaidForString,
-    'actualDistance': dataFromGoogle.actualDistanceString,
-    'uberPaidForFloat': dataFromStatement.uberPaidForFloatMi,
-    'actualFloat': dataFromGoogle.actualDistanceFloatMi,
-    'percentDifference': percentDiff,
-    'routeLatLon': {
-        'pickupLatLon': [dataFromStatement.routeCoordinates.pickupLatLon.lat, dataFromStatement.routeCoordinates.pickupLatLon.lon],
-          // TODO make this work for multistop
-        'dropoffLatLon': [dataFromStatement.routeCoordinates.dropoffLatLons[0].lat, dataFromStatement.routeCoordinates.dropoffLatLons[0].lon],
-    }
-  }
+  return new models.StoredData_V0_5(dataFromStatement, dataFromGoogle, percentDiff)
 }
 
 // Store locally and send to google analytics if this URL is unique
@@ -288,6 +238,14 @@ function compareDistances(dataFromStatement, dataFromGoogle, msgDestination) {
   storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle);
 }
 
+function getTotalDistanceOfAllLegsMeters(legs) {
+  return legs.reduce((totalDistance, leg) => totalDistance + leg.distance.value, 0);
+}
+
+function metersToMiles(meters) {
+  return meters / 1609.34;
+}
+
 // Callback for when the Google Maps API returns directions
 function callbackDirectionsComplete(response, status, dataFromStatement, msgDestination) {
   setInfo('Directions request received from google.', msgDestination)
@@ -295,35 +253,35 @@ function callbackDirectionsComplete(response, status, dataFromStatement, msgDest
   if (status !== 'OK') {
     setError('Directions request failed due to ' + status, msgDestination);
     return -1;
-  } else {
-    let directionsData = response.routes[0].legs[0]; // Get data about the mapped route
-    if (!directionsData) {
-      setError('Directions request failed', msgDestination);
-      return -1;
-    }
-    else {
-      // Success! Find the shortest-distance route to give Uber the benefit of the doubt
-      let minRouteMeters = 9999999999;
-      let legOfShortestRoute = directionsData;
-      response.routes.forEach(function(route, routeIndex, array) {
-        let thisRouteDistanceMeters = route.legs[0].distance.value
-        if (thisRouteDistanceMeters < minRouteMeters)
-        {
-          minRouteMeters = thisRouteDistanceMeters;
-          legOfShortestRoute = route.legs[0];
-        }
-      });
-      let actualDistanceString = legOfShortestRoute.distance.text;
-      let actualDistanceFloatMi = distanceStringToMilesFloat(actualDistanceString);
-      if (actualDistanceFloatMi == null) {
-        //error
-        return;
-      }
-      let dataFromGoogle = new DataFromGoogle(actualDistanceFloatMi, actualDistanceString)
-
-      compareDistances(dataFromStatement, dataFromGoogle, msgDestination);
-    }
   }
+
+  let legs = response.routes[0].legs; // Get data about the mapped route
+  if (!legs) {
+    setError('Directions request failed', msgDestination);
+    return -1;
+  }
+
+  // Success! Find the shortest-distance route to give Uber the benefit of the doubt
+  let bignumber = 9999999999;
+  let minRouteMeters = bignumber;
+  let legsOfShortestRoute = legs;
+  response.routes.forEach(function(route, routeIndex, array) {
+    let thisRouteDistanceMeters = getTotalDistanceOfAllLegsMeters(route.legs);
+    if (thisRouteDistanceMeters < minRouteMeters) {
+      minRouteMeters = thisRouteDistanceMeters;
+      legsOfShortestRoute = route.legs;
+    }
+  });
+  if (minRouteMeters == bignumber) {
+    // Nothing happened in loop - this is an error
+    setError('Could not find a valid route from google maps', msgDestination);
+    return;
+  }
+  let actualDistanceString = legsOfShortestRoute.map(leg => leg.distance.text).join(' + ')
+  let actualDistanceFloatMi = metersToMiles(minRouteMeters);
+  let dataFromGoogle = new DataFromGoogle(actualDistanceFloatMi, actualDistanceString)
+
+  compareDistances(dataFromStatement, dataFromGoogle, msgDestination);
 }
 
 // Callback for when the content-script finished running and returned data from the page

@@ -1,4 +1,5 @@
 const {loadGoogleAnalytics} = require('./google-analytics.js');
+const {migrateToLatest} = require('./models.js');
 
 // Sets the status text and class
 function _setStatus(className, status, showTutorialVideo) {
@@ -42,12 +43,25 @@ function getHexColorForPercentDiff(percentDiff) {
     return hex;
 }
 
-function generateGoogleMapsUrlFrom(routeLatLon) {
-    return `https://www.google.com/maps/dir/?api=1&origin=${routeLatLon.pickupLatLon}&destination=${routeLatLon.dropoffLatLon}&travelmode=driving`
+function generateGoogleMapsUrlFrom(route) {
+    let numDropoffs = route.dropoffLatLons.length;
+    let waypoints = [];
+    for (let i = 0; i < numDropoffs-1; ++i) {
+        waypoints.push(route.dropoffLatLons[i]);
+    }
+    let waypointString = waypoints.join('|');
+    let sourceString = route.pickupLatLon;
+    let destinationString = route.dropoffLatLons[numDropoffs-1];
+
+    return `https://www.google.com/maps/dir/?api=1&origin=${sourceString}&destination=${destinationString}&waypoints=${waypointString}&travelmode=driving`
+}
+
+function floatStr(float) {
+  return Math.round(float*100)/100.0;
 }
 
 function getHtmlForSummaryRow(entry) {
-    let googleMapsUrl = generateGoogleMapsUrlFrom(entry.routeLatLon);
+    let googleMapsUrl = generateGoogleMapsUrlFrom(entry.route);
 
     let percentDiffText = Math.round(entry.percentDifference*100, 2);
     if (percentDiffText <= 0) {
@@ -60,9 +74,18 @@ function getHtmlForSummaryRow(entry) {
 
     let html = `<tr style="background-color: ${bgColor}">`
 
-    html += `<td><a href="${entry.url}" target="_blank">${entry.uberPaidForDistance}</a></td>`
-    html += `<td><a href="${googleMapsUrl}" target="_blank">${entry.actualDistance}</a></td>`
-    html += `<td>${percentDiffText}<span style="font-size:0.7em"><br/>(${entry.actualFloat} mi-${entry.uberPaidForFloat} mi)/${entry.uberPaidForFloat} mi</span></td>`
+    // If google and uber have mismatched distances, convert to miles
+    let uberPaidForString = entry.uberPaidForString;
+    let actualDistanceString = entry.actualDistanceString;
+    if (uberPaidForString.endsWith('mi') && actualDistanceString.endsWith('km')) {
+      actualDistanceString = floatStr(entry.actualDistanceFloatMi) + ' mi';
+    } else if (uberPaidForString.endsWith('km') && actualDistanceString.endsWith('mi')) {
+      uberPaidForString = floatStr(entry.uberPaidForFloatMi) + ' mi';
+    }
+
+    html += `<td><a href="${entry.url}" target="_blank">${uberPaidForString}</a></td>`
+    html += `<td><a href="${googleMapsUrl}" target="_blank">${actualDistanceString}</a></i></td>`
+    html += `<td>${percentDiffText}<span style="font-size:0.7em"><br/>(${entry.actualDistanceFloatMi} mi-${entry.uberPaidForFloatMi} mi)/${entry.uberPaidForFloatMi} mi</span></td>`
 
     html += '</tr>'
     return html;
@@ -74,10 +97,10 @@ function generateTableForEntries(entries) {
     let helpUrlTwitter = 'https://twitter.com/ArminSamii/status/1295857106080456706' // also in background.js
 
     let sumUnderpayments = entries.reduce(function(total, entry) {
-        return total + Math.max(0, entry.actualFloat-entry.uberPaidForFloat)
+        return total + Math.max(0, entry.actualDistanceFloatMi-entry.uberPaidForFloatMi)
     }, 0);
     let pctUnderpaid = entries.reduce(function(total, entry) {
-      if (entry.actualFloat - entry.uberPaidForFloat > 0.5) {
+      if (entry.actualDistanceFloatMi - entry.uberPaidForFloatMi > 0.5) {
         return total + 1;
       } else {
         return total;
@@ -112,7 +135,8 @@ function showSummary() {
     let keys = Object.keys(data);
     let unsortedKeys = keys.filter(key => key.startsWith('comparisons'));
     let unsortedEntries = keys.map(key => data[key]);
-    let sortedEntries = unsortedEntries.sort(function(entry0, entry1) {
+    let migratedEntries = unsortedEntries.map(data => migrateToLatest(data));
+    let sortedEntries = migratedEntries.sort(function(entry0, entry1) {
         return entry1.percentDifference - entry0.percentDifference;
     });
     summary.innerHTML = generateTableForEntries(sortedEntries);
