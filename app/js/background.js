@@ -45,12 +45,10 @@ var listeners = [
             bg.runCheatDetectorOnTrip(messageDestination);
         },
         url: {
+            // match both /p3/payments/trips (taiwan) and /p3/payments/v2/trips (everywhere else?)
             hostSuffix: 'drivers.uber.com',
-            pathPrefix: '/p3/payments/v2/trips/',
-            // // match both /p3/payments/trips (taiwan) and /p3/payments/v2/trips (everywhere else)
-            // hostSuffix: 'drivers.uber.com',
-            // pathPrefix: '/p3/payments/',
-            // pathContains: 'trips',
+            pathPrefix: '/p3/payments/',
+            pathContains: 'trips',
         }
     },
     {
