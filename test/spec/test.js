@@ -30,19 +30,22 @@ describe('Test background', () => {
     let tripId = "http://fake/id/"
     let dataFromStatement = new bg.DataFromStatement(32.5, "32.5 mi", routeCoordinates, tripId);
 
+    // Fake message destination
+    let messageDestination = new bg.MessageDestination(10, 0);
+
     // Query google (with fake, synchronous callbacks)
-    bg.queryGoogleForDistance(dataFromStatement, 0);
+    bg.queryGoogleForDistance(dataFromStatement, messageDestination);
 
     // This should be marked as acceptable: 32.5 miles is within 10% of what we expect (35)
-    expect(m.localChromeStorage.data.tab0.className).toEqual("acceptable");
+    expect(m.localChromeStorage.data.tab10_0.className).toEqual("acceptable");
     expect(m.pageAction.path).toEqual('icons/acceptable.png')
 
     // Query google again, with 25 mi / 40.23 km
     dataFromStatement = new bg.DataFromStatement(25, "40.2 km", routeCoordinates, tripId);
-    bg.queryGoogleForDistance(dataFromStatement, 0);
+    bg.queryGoogleForDistance(dataFromStatement, messageDestination);
 
     // This should be marked as cheated: 25 miles is more than 10% away
-    expect(m.localChromeStorage.data.tab0.className).toEqual("cheated");
+    expect(m.localChromeStorage.data.tab10_0.className).toEqual("cheated");
     expect(m.pageAction.path).toEqual('icons/cheated.png')
   }),
   it('Check that multiple instances of the same data is not stored twice, and no analytics sent', () => {
@@ -55,19 +58,21 @@ describe('Test background', () => {
     let dataFromStatement1 = new bg.DataFromStatement(32.501, "32.5 mi", routeCoordinatesFake, tripId);
     let dataFromStatement2 = new bg.DataFromStatement(32.5,   "32.5 mi", routeCoordinatesFake, tripId);
 
+    let messageDestination = new bg.MessageDestination(10, 0);
+
     // Query google
-    bg.queryGoogleForDistance(dataFromStatement1, 0);
+    bg.queryGoogleForDistance(dataFromStatement1, messageDestination);
     m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden = true
     expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
     let numAnalytics = m.allAnalytics.length;
 
     // Query again - ensure data is not overridden, and no analytics sent
-    bg.queryGoogleForDistance(dataFromStatement1, 0);
+    bg.queryGoogleForDistance(dataFromStatement1, messageDestination);
     expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
     expect(m.allAnalytics.length).toEqual(numAnalytics);
 
     // Query with a slightly different value - ensure data is overridden, and analytics sent
-    bg.queryGoogleForDistance(dataFromStatement2, 0);
+    bg.queryGoogleForDistance(dataFromStatement2, messageDestination);
     expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(undefined);
     expect(m.allAnalytics.length).toBeGreaterThan(numAnalytics);
   });

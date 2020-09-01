@@ -23,16 +23,19 @@ function getLatLonFor(pinImageSource, googleMapsImageSource) {
 
 // Reads the page sources and returns a tuple of tuples representing the lat/lon coordinatens
 // of the pickup and dropoff locations.
-function computePickupDropoff()
-{
-  images = document.getElementsByTagName('img')
+function computePickupDropoff(dom) {
+  images = dom.getElementsByTagName('img')
   let i;
-  let googleimage = [];
+  let googleimage;
   for (i = 0; i < images.length; i++) {
     if (images[i]['src'].includes('https://maps.googleapis.com')) {
   	  googleimage = images[i];
   	  break;
     }
+  }
+  if (googleimage == undefined) {
+    console.log('Error: could not find google image...this should never happen.');
+    return null;
   }
 
   // Regex match the source URL, which looks like:
@@ -46,34 +49,36 @@ function computePickupDropoff()
 }
 
 // Courtesy of https://stackoverflow.com/a/14284815/1057105
-function getElementByXpath(path) {
-  return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+function getElementByXpath(dom, path) {
+  return dom.evaluate(path, dom, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 }
 
 // Read the Uber site for the distance
 // Returns a tuple, first the data, second how the data was found for tracking
-function readUberPaidForDistance()
-{
+function readUberPaidForDistance(dom) {
+  // e.g. "5.5 mi" or "0.2 km"
+  let mileageRegex = /[^0-9]([0-9]+\.?[0-9]*)\s+(mi|km)/g
+
   // First, try the xpath that works for me
-  let element = getElementByXpath(`//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]`)
-  if (element)
+  let element = getElementByXpath(dom, `//*[@id="root"]/div/div/div/div/div/div/div[2]/div/div[4]/div/div[2]/div[2]`)
+  if (element && mileageRegex.exec(element.innerHTML))
   {
     return [element.innerHTML, 'by-xpath'];
   }
 
   // If that doesn't work, try getting the second element by the class name
-  durationAndDistanceElements = document.getElementsByClassName('cu cv');
+  durationAndDistanceElements = dom.getElementsByClassName('cu cv');
   if (durationAndDistanceElements.length == 2)
   {
     element = durationAndDistanceElements[1];
-    if (element)
+    if (element && mileageRegex.exec(element.innerHTML))
     {
       return [element.innerHTML, 'by-classname'];
     }
   }
 
   // If that doesn't work, try parsing the entire page
-  let rootElement = document.documentElement.innerHTML;
+  let rootElement = dom.documentElement.innerHTML;
   if (rootElement.length < 100) {
       return [null, 'no-root-element']
   }
@@ -81,7 +86,7 @@ function readUberPaidForDistance()
   // First look for for e.g. "Distance[...]5.5 mi"
   let regex = /Distance[^0-9]*([0-9]*\.?[0-9]*) (mi|km)/g
   let matches = regex.exec(rootElement)
-  if (matches)
+  if (matches && mileageRegex.exec(element.innerHTML))
   {
     // Return distance + space + mi/km
     return [matches[1] + ` ` + matches[2], 'by-regex']
@@ -89,8 +94,7 @@ function readUberPaidForDistance()
   // If that doesn't work, just look for "5.5 mi"...this could
   // more easily appear in other formats, but doesn't, so
   // this should be fine as a fallback.
-  regex = /[^0-9]([0-9]+\.?[0-9]*)\s+(mi|km)/g
-  matches = regex.exec(rootElement)
+  matches = mileageRegex.exec(rootElement)
   if (matches)
   {
     // Return distance + space + mi/km
@@ -106,10 +110,9 @@ function getTripId() {
 }
 
 // Compute and return all data
-function getAllData()
-{
-  let pickupDropoff = computePickupDropoff();
-  let uberPaidForDistanceTuple = readUberPaidForDistance();
+function getAllData() {
+  let pickupDropoff = computePickupDropoff(document);
+  let uberPaidForDistanceTuple = readUberPaidForDistance(document);
   let tripId = getTripId();
 
   return new DataFromContentScript(

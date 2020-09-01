@@ -125,11 +125,11 @@ window.onload = function() {
   let activeTabQuery = { active: true, currentWindow: true };
   chrome.tabs.query(activeTabQuery, function(tabs) {
     let tabId = tabs[0].id;
-    let key = 'tab' + tabId;
+    let messageDestinationString = tabId + '_0' // Frame id zero: not in iframe
+    let key = 'tab' + messageDestinationString;
     chrome.storage.local.get(key, function(data) {
       let status = data[key];
-      if (!status)
-      {
+      if (!status) {
         return;
       }
       _setStatus(status.className, status.text, status.showTutorialVideo);
