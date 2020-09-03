@@ -1,8 +1,8 @@
 {
   "name": "UberCheats",
-  "version": "0.5",
+  "version": "0.51",
   "description": "UberEats has a software bug that underpays drivers. This looks at your statement and tells you if you were cheated.",
-  "permissions": ["declarativeContent", "storage", "webNavigation", "*://drivers.uber.com/p3/payments/v2/trips/*"],
+  "permissions": ["declarativeContent", "storage", "webNavigation", "*://drivers.uber.com/p3/payments/*trips/*"],
   "background": {
     "scripts": ["js/background.js"],
     "persistent": false
