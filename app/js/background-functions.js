@@ -65,12 +65,12 @@ function setCheated(message, msgDestination) {
 }
 
 // Returns the latitude/longitude given a google maps image URL
-// Finds the lat/lon directly preceded by text
-function getLatLonPrecededBy(text, googleImageSource) {
+// Finds the lat/lon directly preceded by preceededRegex
+function getLatLonPrecededBy(preceededRegex, googleImageSource) {
   var numberRegex = '[-]?[0-9]*';
   var latOrLonRegex = '(' + numberRegex + '.' + numberRegex + ')';
-  var latAndLonRegex = latOrLonRegex + '%2C' + latOrLonRegex;
-  var pickupRegex = new RegExp(text + latAndLonRegex, 'g');
+  var latAndLonRegex = latOrLonRegex + '[%0-9]*C' + latOrLonRegex;
+  var pickupRegex = new RegExp(preceededRegex + latAndLonRegex, 'g');
   var match = pickupRegex.exec(googleImageSource);
   if (!match) {
     return null;
@@ -85,9 +85,10 @@ function googleImageSourceToRoute(googleImageSource) {
   // https://[...]car-pickup-pin.png%7Cscale%3A2%7C11.11111111111111%2C-11.11111111111111&[...]
   //             car-dropoff-pin.png%7Cscale%3A2%7C22.22222222222222%2C-22.22222222222222 // last dropoff
   //                                            %7C33.33333333333333%2C-33.33333333333333&[...] // additional dropoff (waypoint)
+  // We have also seen: ...cloudfront.net%252Fmaps%252Fhelix%252Fpickup.png%257Cscale%253A2%257C25.0402312579%252C121.5575271548...
   let imagesource = googleImageSource;
-  let pickupLatLon = getLatLonPrecededBy(  'car-pickup-pin.png%7Cscale%3A2%7C', imagesource);
-  let endDropoffLatLon = getLatLonPrecededBy('car-dropoff-pin.png%7Cscale%3A2%7C', imagesource);
+  let pickupLatLon = getLatLonPrecededBy(     'pickup[^.]*.png[%0-9]*Cscale[^.]*7C', imagesource);
+  let endDropoffLatLon = getLatLonPrecededBy('dropoff[^.]*.png[%0-9]*Cscale[^.]*7C', imagesource);
   let additionalDropoff = getLatLonPrecededBy(endDropoffLatLon.lon + '%7C', imagesource);
 
   let route = new RouteCoordinates(pickupLatLon);

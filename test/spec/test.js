@@ -26,6 +26,7 @@ describe('Test background', () => {
   it('Check that google maps URLs are correctly parsed', () => {
     let singlestopUrl = `https://maps.googleapis.com/maps/api/staticmap?size=360x100&markers=%7Canchor%3Abottom%7Cicon%3Ahttps%3A%2F%2Fd1a3f4spazzrp4.cloudfront.net%2Fmaps%2Fhelix%2Fcar-pickup-pin.png%7Cscale%3A2%7C22.2222222222%2C-11.1111111111%7C22.2222222222%2C-11.1111111111&markers=%7Canchor%3Abottom%7Cicon%3Ahttps%3A%2F%2Fd1a3f4spazzrp4.cloudfront.net%2Fmaps%2Fhelix%2Fcar-dropoff-pin.png%7Cscale%3A2%7C33.3333333333%2C-44.4444444444&path=color%3A0x2DBAE4%`
     let multistopUrl = `https://maps.googleapis.com/maps/api/staticmap?size=360x100&markers=%7Canchor%3Abottom%7Cicon%3Ahttps%3A%2F%2Fd1a3f4spazzrp4.cloudfront.net%2Fmaps%2Fhelix%2Fcar-pickup-pin.png%7Cscale%3A2%7C22.2222222222%2C-11.1111111111%7C22.2222222222%2C-11.1111111111&markers=%7Canchor%3Abottom%7Cicon%3Ahttps%3A%2F%2Fd1a3f4spazzrp4.cloudfront.net%2Fmaps%2Fhelix%2Fcar-dropoff-pin.png%7Cscale%3A2%7C33.3333333333%2C-44.4444444444%7C55.555555%2C-66.666666&path=color%3A0x2DBAE4%`
+    let taiwanUrl = `https://maps.googleapis.com/maps/api/staticmap?size=720x400\u0026markers=%257Cicon%253Ahttps%253A%252F%252Fd1a3f4spazzrp4.cloudfront.net%252Fmaps%252Fhelix%252Fpickup.png%257Cscale%253A2%257C25.0402312579%252C121.5575271548\u0026markers=%257Cicon%253Ahttps%253A%252F%252Fd1a3f4spazzrp4.cloudfront.net%252Fmaps%252Fhelix%252Fdropoff.png%257Cscale%253A2%257C25.03495%252C121.54596`
 
     let singlestopRoute = bg.googleImageSourceToRoute(singlestopUrl);
     expect(singlestopRoute.getNumDropoffLocations()).toEqual(1);
@@ -36,6 +37,11 @@ describe('Test background', () => {
     expect(multistopRoute.pickupLatLon).toEqual(singlestopRoute.pickupLatLon);
     expect(multistopRoute.dropoffLatLons[0]).toEqual(new bg.LatLon('55.555555', '-66.666666'));
     expect(multistopRoute.dropoffLatLons[1]).toEqual(singlestopRoute.dropoffLatLons[0]);
+
+    let taiwanRoute = bg.googleImageSourceToRoute(taiwanUrl);
+    expect(taiwanRoute.getNumDropoffLocations()).toEqual(1);
+    expect(taiwanRoute.pickupLatLon).toEqual(new bg.LatLon('25.0402312579', '121.5575271548'));
+    expect(taiwanRoute.dropoffLatLons[0]).toEqual(new bg.LatLon('25.03495', '121.54596'));
   }),
   it('Check google API calls correctly identify cheated vs acceptable', () => {
     m.setupGlobalMocks();
