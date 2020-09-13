@@ -49,7 +49,7 @@ function setTut(message, msgDestination) {
 
 // Sets an info message
 function setInfo(message, msgDestination) {
-  _setStatus('info', message, msgDestination, true)
+  _setStatus('info', message, msgDestination, false)
 }
 
 // Sets a message signifying UberEats paid you fairly

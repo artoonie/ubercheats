@@ -116,6 +116,9 @@ function generateTableForEntries(entries) {
     let html = 'This table only shows statements you\'ve already clicked on. Populate this table by clicking on each statement, as per the <a href="https://www.youtube.com/watch?v=1k2YYlb21N8">tutorial</a>.<br/><br/>'
     html += `Have a lot of red values in this summary? Let us know! Share your story on <a href="${helpUrlReddit}" target=\"_blank\">Reddit</a> or <a href="${helpUrlTwitter}" target=\"_blank\">Twitter</a><br/><br/>`
     html += `<i>You have been underpaid for a total of ${roundedSumUnderpayments} miles:</i><br/><br/>`
+    if (sumUnderpayments > 4.0) {
+      html += `<b>Uber seems to have underpaid you significantly! Have you opted out of the <a href="https://drivers-united.org/uber-arbitration-opt-out">Arbitration Agreement</a>? If so, please get in touch with me at <a href="mailto:ubercheats@arminsamii.com">ubercheats@arminsamii.com</a> - you may be able to help your fellow drivers get paid fairly.</b><br/><br/>`
+    }
     html += '<table class="tableSummary"><th>Uber paid you for</th>    <th>Actual shortest distance</th>   <th>Underpaid by</th></tr>'
 
     entries.forEach(function(entry, entryIndex, array) {
