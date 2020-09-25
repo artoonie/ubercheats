@@ -121,11 +121,14 @@ function queryGoogleForDistance(dataFromStatement, msgDestination) {
 
   setInfo('Reaching out to Google to compute the distance ' + coords, msgDestination);
 
-  const route = {
+  let route = {
     origin: start,
     destination: end,
     waypoints: waypoints,
     travelMode: 'DRIVING'
+  }
+  if (waypoints.length != 0) {
+    route.optimizeWaypoints = true;
   }
 
   directionsService.route(route, function(response, status) {

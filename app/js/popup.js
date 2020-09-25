@@ -45,11 +45,14 @@ function getHexColorForPercentDiff(percentDiff) {
 
 function generateGoogleMapsUrlFrom(route) {
     let numDropoffs = route.dropoffLatLons.length;
-    let waypoints = [];
-    for (let i = 0; i < numDropoffs-1; ++i) {
-        waypoints.push(route.dropoffLatLons[i]);
+    let waypointString = '';
+    if (numDropoffs > 1) {
+      let waypoints = ['optimize:true'];
+      for (let i = 0; i < numDropoffs-1; ++i) {
+          waypoints.push(route.dropoffLatLons[i]);
+      }
+      waypointString = waypoints.join('|');
     }
-    let waypointString = waypoints.join('|');
     let sourceString = route.pickupLatLon;
     let destinationString = route.dropoffLatLons[numDropoffs-1];
 
