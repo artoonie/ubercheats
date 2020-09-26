@@ -32,6 +32,12 @@ class RouteCoordinates {
   getNumDropoffLocations() {
     return this.dropoffLatLons.length;
   }
+  getReversedDropoffRoute() {
+    // Return a version of this route, but with the dropoffs in reverse order
+    let routeCoordinates = new RouteCoordinates(this.pickupLatLon)
+    routeCoordinates.dropoffLatLons = this.dropoffLatLons.slice().reverse();
+    return routeCoordinates;
+  }
   toString() {
     let dropoffString = this.dropoffLatLons.reduce((dropoffString, currDropoff) => dropoffString + ' to ' + currDropoff, '');
     return `From ${this.pickupLatLon} ${dropoffString}`
