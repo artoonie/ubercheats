@@ -1,6 +1,7 @@
 const m = require('./mocks.js');
 const bg = require('../../app/js/background-functions.js');
 const models = require('../../app/js/models.js');
+const popup = require('../../app/js/popup-functions.js');
 
 describe('Test background', () => {
   it('Check the data sent to popup - which must not change to maintain backwards compatibility', () => {
@@ -92,9 +93,9 @@ describe('Test background', () => {
 
     // Ensure the distance is as expected
     let key = "comparisons_" + tripId;
-    expect(m.syncChromeStorage.data[key].route.dropoffLatLons.length).toEqual(3);
-    expect(m.syncChromeStorage.data[key].actualDistanceFloatMi).toEqual(6);
-    expect(m.syncChromeStorage.data[key].actualDistanceString).toEqual('1 mi + 2 mi + 3 mi');
+    expect(m.localChromeStorage.data[key].route.dropoffLatLons.length).toEqual(3);
+    expect(m.localChromeStorage.data[key].actualDistanceFloatMi).toEqual(6);
+    expect(m.localChromeStorage.data[key].actualDistanceString).toEqual('1 mi + 2 mi + 3 mi');
   }),
   it('Check that multiple instances of the same data is not stored twice, and no analytics sent', () => {
     m.setupGlobalMocks();
@@ -110,18 +111,18 @@ describe('Test background', () => {
 
     // Query google
     bg.queryGoogleForDistance(dataFromStatement1, messageDestination);
-    m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden = true
-    expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
+    m.localChromeStorage.data[key].customFieldToEnsureNotOverridden = true
+    expect(m.localChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
     let numAnalytics = m.allAnalytics.length;
 
     // Query again - ensure data is not overridden, and no analytics sent
     bg.queryGoogleForDistance(dataFromStatement1, messageDestination);
-    expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
+    expect(m.localChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(true);
     expect(m.allAnalytics.length).toEqual(numAnalytics);
 
     // Query with a slightly different value - ensure data is overridden, and analytics sent
     bg.queryGoogleForDistance(dataFromStatement2, messageDestination);
-    expect(m.syncChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(undefined);
+    expect(m.localChromeStorage.data[key].customFieldToEnsureNotOverridden).toEqual(undefined);
     expect(m.allAnalytics.length).toBeGreaterThan(numAnalytics);
   }),
   it('Check migration from v04 to v05 model', () => {
@@ -141,5 +142,41 @@ describe('Test background', () => {
     expect(v05_migrated_explicitly).toEqual(v05);
     let v05_migrated_implicitly = models.migrateToLatest(v04);
     expect(v05_migrated_explicitly).toEqual(v05_migrated_implicitly);
+  }),
+  it('Verify both sync storage and local storage are read', () => {
+    m.setupGlobalMocks();
+
+    // Gather some fake data
+    let fakePickup = new bg.LatLon(0, 1);
+    let fakeDropoff = new bg.LatLon(1, 2);
+    let fakeRouteCoordinates = new bg.RouteCoordinates(fakePickup, fakeDropoff);
+    let fakeModel = new models.StoredData_V0_5(
+      new bg.DataFromStatement(10.0, '10.0 mi', fakeRouteCoordinates, 'fakeid'),
+      new bg.DataFromGoogle(10.0, '10.0 mi'),
+      0.0
+    );
+
+    // First ensure nothing is there
+    let summaryElement = document.createElement('div');
+    popup.addSummaryToElement(summaryElement);
+    expect(summaryElement.getElementsByTagName('tbody')[0].childElementCount).toEqual(1);
+
+    // Set fake data in sync and expect 1 item added
+    fakeModel.url = 'fake0';
+    m.syncChromeStorage.set({comparisons_666: fakeModel});
+    popup.addSummaryToElement(summaryElement);
+    expect(summaryElement.getElementsByTagName('tbody')[0].childElementCount).toEqual(2);
+
+    // Add a local storage item with the same url, ensure nothing added
+    fakeModel.url = 'fake0';
+    m.localChromeStorage.set({comparisons_666: fakeModel});
+    popup.addSummaryToElement(summaryElement);
+    expect(summaryElement.getElementsByTagName('tbody')[0].childElementCount).toEqual(2);
+
+    // Add local storage with different url, ensure something added
+    fakeModel.url = 'fake1';
+    m.localChromeStorage.set({comparisons_666: fakeModel});
+    popup.addSummaryToElement(summaryElement);
+    expect(summaryElement.getElementsByTagName('tbody')[0].childElementCount).toEqual(3);
   });
 })

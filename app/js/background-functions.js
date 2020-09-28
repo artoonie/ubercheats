@@ -250,7 +250,7 @@ function computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle) {
 // Store locally and send to google analytics if this URL is unique
 function storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle) {
   var key = 'comparisons_' + dataFromStatement.tripId;
-  chrome.storage.sync.get(key, function(data) {
+  chrome.storage.local.get(key, function(data) {
       let newData = computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle);
       if (key in data && data[key].percentDifference == newData.percentDifference)
       {
@@ -262,7 +262,7 @@ function storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle) {
 
       let storedObject = {};
       storedObject[key] = newData;
-      chrome.storage.sync.set(storedObject);
+      chrome.storage.local.set(storedObject);
   });
 }
 
