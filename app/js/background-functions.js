@@ -123,7 +123,9 @@ function makeGoogleRouteFrom(routeCoordinates) {
 // Queries Google Maps for the distance between the start and end points,
 // then asynchronously compares that value to what UberEats paid you for
 // If there are dropoffs, asks google to try multiple possible routes
-function queryGoogleForDistance(dataFromStatement, msgDestination) {
+// nextSleepTimeoutMs: if we are over the limit, how long should we wait til we
+// query google again?
+function queryGoogleForDistance(dataFromStatement, msgDestination, nextSleepTimeoutMs=500) {
   let coords0 = dataFromStatement.routeCoordinates;
   let coords1 = dataFromStatement.routeCoordinates.getReversedDropoffRoute();
 
@@ -141,6 +143,14 @@ function queryGoogleForDistance(dataFromStatement, msgDestination) {
 
   var firstResponse = null;
   let callback = function(response, status) {
+    if (status == 'OVER_QUERY_LIMIT') {
+      setTimeout(() => {
+        console.log('Sleeping for ' + nextSleepTimeoutMs + 'ms to avoid OVER_QUERY_LIMIT');
+        queryGoogleForDistance(dataFromStatement, msgDestination, nextSleepTimeoutMs*2);
+      }, nextSleepTimeoutMs);
+      return;
+    }
+
     if (firstResponse === null) {
       firstResponse = getDataFromGoogleResponse(response, status, msgDestination);
 
