@@ -14,6 +14,13 @@ This is a Chrome Extension which allows you to detect when UberEATS has underpai
 2. [Business Insider](https://www.businessinsider.com/uber-eats-driver-who-scraped-data-alleges-wage-theft-report-2020-8)
 3. [Screen Rant](https://screenrant.com/ubercheats-chrome-extension-uber-eats-drivers/)
 
+# Build
+```bash
+./zipitup.sh
+```
+
+This will create ubercheats.zip, which you can install in chrome.
+
 # TODO (feature list - tech debt is separate and obvious)
 1. Switch between biking/driving directions
 2. Google Analytics for what % of each users' trips are underpaid

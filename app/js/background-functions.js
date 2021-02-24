@@ -442,7 +442,7 @@ function runCheatDetectorOnStatement(msgDestination) {
       function(result) {
         let returnValue = result[0];
         let numTrips = returnValue.length;
-        let messageString = `Found ${numTrips} trips in this statement.<br/>Note: you no longer need to click each trip in this statement.`;
+        let messageString = `Found ${numTrips} trips in this statement.`;
         setInfo(messageString, msgDestination);
       }
   )
