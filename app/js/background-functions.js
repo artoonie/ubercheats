@@ -100,40 +100,80 @@ function googleImageSourceToRoute(googleImageSource) {
   return route;
 }
 
-// Queries Google Maps for the distance between the start and end points,
-// then asynchronously compares that value to what UberEats paid you for
-function queryGoogleForDistance(dataFromStatement, msgDestination) {
-  let coords = dataFromStatement.routeCoordinates;
-
-  let directionsService = new google.maps.DirectionsService();
-  let start = coords.getGooglePickup();
-
-  let numDropoffs = coords.getNumDropoffLocations();
-  let end = coords.getGoogleDropoff(numDropoffs-1);
+function makeGoogleRouteFrom(routeCoordinates) {
+  let numDropoffs = routeCoordinates.getNumDropoffLocations();
 
   let waypoints = [];
   for (let i = 0; i < numDropoffs-1; ++i) {
-      waypoints.push({
-          location: coords.getGoogleDropoff(i),
-          stopover: true
-      });
+    waypoints.push({
+      location: routeCoordinates.getGoogleDropoff(i),
+      stopover: true
+    });
   }
 
-  setInfo('Reaching out to Google to compute the distance ' + coords, msgDestination);
-
   let route = {
-    origin: start,
-    destination: end,
+    origin: routeCoordinates.getGooglePickup(),
+    destination: routeCoordinates.getGoogleDropoff(numDropoffs-1),
     waypoints: waypoints,
     travelMode: 'DRIVING'
   }
-  if (waypoints.length != 0) {
-    route.optimizeWaypoints = true;
+  return route;
+}
+
+// Queries Google Maps for the distance between the start and end points,
+// then asynchronously compares that value to what UberEats paid you for
+// If there are dropoffs, asks google to try multiple possible routes
+// nextSleepTimeoutMs: if we are over the limit, how long should we wait til we
+// query google again?
+function queryGoogleForDistance(dataFromStatement, msgDestination, nextSleepTimeoutMs=500) {
+  let coords0 = dataFromStatement.routeCoordinates;
+  let coords1 = dataFromStatement.routeCoordinates.getReversedDropoffRoute();
+
+  let directionsService = new google.maps.DirectionsService();
+  let start = coords0.getGooglePickup(); // same for both coords0 and coords1
+
+  let numDropoffs = coords0.getNumDropoffLocations();
+  let needsToCompareTwoRoutes = numDropoffs > 1;
+
+  // TODO this does not support all permutations of waypoints
+  let route0 = makeGoogleRouteFrom(coords0);
+  let route1 = makeGoogleRouteFrom(coords1); // might not be used
+
+  setInfo('Reaching out to Google to compute the distance ' + coords0, msgDestination);
+
+  var firstResponse = null;
+  let callback = function(response, status) {
+    if (status == 'OVER_QUERY_LIMIT') {
+      setTimeout(() => {
+        console.log('Sleeping for ' + nextSleepTimeoutMs + 'ms to avoid OVER_QUERY_LIMIT');
+        queryGoogleForDistance(dataFromStatement, msgDestination, nextSleepTimeoutMs*2);
+      }, nextSleepTimeoutMs);
+      return;
+    }
+
+    if (firstResponse === null) {
+      firstResponse = getDataFromGoogleResponse(response, status, msgDestination);
+
+      // Don't wait for the second response if not needed
+      if (!needsToCompareTwoRoutes) {
+        compareDistances(dataFromStatement, firstResponse, msgDestination);
+      }
+    } else {
+      const secondResponse = getDataFromGoogleResponse(response, status, msgDestination);
+
+      if (firstResponse.actualDistanceFloatMi < secondResponse.actualDistanceFloatMi) {
+        compareDistances(dataFromStatement, firstResponse, msgDestination);
+      } else {
+        compareDistances(dataFromStatement, secondResponse, msgDestination);
+      }
+    }
   }
 
-  directionsService.route(route, function(response, status) {
-    callbackDirectionsComplete(response, status, dataFromStatement, msgDestination);
-  });
+  directionsService.route(route0, callback);
+
+  if (needsToCompareTwoRoutes) {
+    directionsService.route(route1, callback);
+  }
 }
 
 // Converts "1.2 mi" or "6 km" to the float equivalent in miles
@@ -173,6 +213,9 @@ function distanceStringToMilesFloat(distanceString, msgDestination) {
 
 // Percent difference between the actual distance and what uber paid
 function calculatePercentDiff(dataFromStatement, dataFromGoogle) {
+  if (dataFromGoogle.actualDistanceFloatMi == undefined || dataFromStatement.uberPaidForFloatMi == undefined) {
+    throw new Error('Should never get to this calculation with undefined data');
+  }
   return (dataFromGoogle.actualDistanceFloatMi - dataFromStatement.uberPaidForFloatMi) / dataFromStatement.uberPaidForFloatMi;
 }
 
@@ -193,10 +236,10 @@ function compareDistancesAndSetPopupText(dataFromStatement, dataFromGoogle, msgD
   }
 }
 
-function logToGoogleAnalytics(dataFromGoogle, dataFromStatement) {
+function logToGoogleAnalytics(dataFromStatement, dataFromGoogle) {
   // Send data to google analytics
   // Include the old, incorrect percent diff calculation to keep data consistent
-  let percentDiff = calculatePercentDiff(dataFromGoogle, dataFromStatement);
+  let percentDiff = calculatePercentDiff(dataFromStatement, dataFromGoogle);
   let oldPercentDiffCalculation = (dataFromGoogle.actualDistanceFloatMi - dataFromStatement.uberPaidForFloatMi) / dataFromGoogle.actualDistanceFloatMi
   let absoluteDifferenceTimes100 = Math.round((dataFromGoogle.actualDistanceFloatMi - dataFromStatement.uberPaidForFloatMi) * 100);
   ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', absoluteDifferenceTimes100);
@@ -217,7 +260,7 @@ function computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle) {
 // Store locally and send to google analytics if this URL is unique
 function storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle) {
   var key = 'comparisons_' + dataFromStatement.tripId;
-  chrome.storage.sync.get(key, function(data) {
+  chrome.storage.local.get(key, function(data) {
       let newData = computeDataToStoreForSummaryTable(dataFromStatement, dataFromGoogle);
       if (key in data && data[key].percentDifference == newData.percentDifference)
       {
@@ -225,11 +268,11 @@ function storeAndAnalyzeDistances(dataFromStatement, dataFromGoogle) {
         return;
       }
 
-      logToGoogleAnalytics(dataFromGoogle, dataFromStatement);
+      logToGoogleAnalytics(dataFromStatement, dataFromGoogle);
 
       let storedObject = {};
       storedObject[key] = newData;
-      chrome.storage.sync.set(storedObject);
+      chrome.storage.local.set(storedObject);
   });
 }
 
@@ -251,18 +294,20 @@ function metersToMiles(meters) {
 }
 
 // Callback for when the Google Maps API returns directions
-function callbackDirectionsComplete(response, status, dataFromStatement, msgDestination) {
+function getDataFromGoogleResponse(response, status, msgDestination) {
   setInfo('Directions request received from google.', msgDestination)
 
   if (status !== 'OK') {
-    setError('Directions request failed due to ' + status, msgDestination);
-    return -1;
+    let msg = 'Directions request failed due to ' + status;
+    setError(msg, msgDestination);
+    throw new Error(msg);
   }
 
   let legs = response.routes[0].legs; // Get data about the mapped route
   if (!legs) {
-    setError('Directions request failed', msgDestination);
-    return -1;
+    let msg = 'Directions request failed';
+    setError(msg, msgDestination);
+    throw new Error(msg);
   }
 
   // Success! Find the shortest-distance route to give Uber the benefit of the doubt
@@ -278,14 +323,27 @@ function callbackDirectionsComplete(response, status, dataFromStatement, msgDest
   });
   if (minRouteMeters == bignumber) {
     // Nothing happened in loop - this is an error
-    setError('Could not find a valid route from google maps', msgDestination);
-    return;
+    let msg = 'Could not find a valid route from google maps';
+    setError(msg, msgDestination);
+    throw new Error(msg);
   }
+
   let actualDistanceString = legsOfShortestRoute.map(leg => leg.distance.text).join(' + ')
   let actualDistanceFloatMi = metersToMiles(minRouteMeters);
   let dataFromGoogle = new DataFromGoogle(actualDistanceFloatMi, actualDistanceString)
 
-  compareDistances(dataFromStatement, dataFromGoogle, msgDestination);
+  if(actualDistanceString == undefined) {
+    let msg = 'Bad data returned from Google from leg count ' + legsOfShortestRoute.length;
+    setError(msg, msgDestination);
+    throw new Error(msg);
+  }
+  if(actualDistanceFloatMi == undefined) {
+    let msg = 'Could not parse float from ' + minRouteMeters + ' meters';
+    setError(msg, msgDestination);
+    throw new Error(msg);
+  }
+
+  return dataFromGoogle;
 }
 
 // Callback for when the content-script finished running and returned data from the page
@@ -299,9 +357,15 @@ function callbackFinishedReadingPage(msgDestination, result) {
   let uberPaidForString = result.uberPaidForString;
   let uberPaidForFloatMi = distanceStringToMilesFloat(uberPaidForString, msgDestination);
 
-  if (uberPaidForFloatMi == null) {
-    // error
-    return;
+  if (!uberPaidForString) {
+    let msg = 'string from image was invalid: ' + uberPaidForString;
+    setError(msg, msgDestination);
+    throw new Error(msg);
+  }
+  if (!uberPaidForFloatMi) {
+    let msg = 'mileage parsing was invalid';
+    setError(msg, msgDestination);
+    throw new Error(msg);
   }
 
   let dataFromStatement = new DataFromStatement(uberPaidForFloatMi, uberPaidForString, route, tripId);
@@ -378,7 +442,7 @@ function runCheatDetectorOnStatement(msgDestination) {
       function(result) {
         let returnValue = result[0];
         let numTrips = returnValue.length;
-        let messageString = `Found ${numTrips} trips in this statement.<br/>Note: you no longer need to click each trip in this statement.`;
+        let messageString = `Found ${numTrips} trips in this statement.`;
         setInfo(messageString, msgDestination);
       }
   )

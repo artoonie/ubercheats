@@ -1,3 +1,6 @@
+const models = require('../../app/js/models.js');
+const bg = require('../../app/js/background-functions.js');
+
 class GoogleMockDirectionsService {
   constructor() {}
   route(route, callback) {
@@ -79,19 +82,22 @@ class ChromeStorageMock {
   get(key, callback) {
     if (key == null) {
       callback(this.data);
+      return;
     }
     // This could also be a list of keys but we don't use that
     if (!(key in this.data)) {
       callback({});
+      return;
     }
 
     let data = {}
     data[key] = this.data[key];
     callback(data);
+    return;
   }
   set(data) {
     for(const key in data) {
-      this.data[key] = data[key];
+      this.data[key] = {...data[key]};
     }
   }
   clear() {
@@ -136,6 +142,8 @@ function setupGlobalMocks() {
     global.google = googleMockDirections;
     global.chrome = chromeMock
     global.ga = googleMockAnalytics;
+    localChromeStorage.clear();
+    syncChromeStorage.clear();
 }
 
 function createFakeRoute(bg) {

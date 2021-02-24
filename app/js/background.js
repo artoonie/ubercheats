@@ -10,8 +10,6 @@ var isGoogleAPILoaded = false;
 function googleApiIsLoaded() {
   console.log('Google API is loaded');
   isGoogleAPILoaded = true;
-
-  chrome.storage.local.clear();
 }
 window.googleApiIsLoaded = googleApiIsLoaded; // otherwise google callback can't find it
 
