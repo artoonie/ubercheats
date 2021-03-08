@@ -7,7 +7,7 @@ function loadGoogleAnalytics(pageviewName) {
   window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
   ga('create', 'UA-175307097-1', 'auto');
   ga('set', 'checkProtocolTask', function(){}); // Removes failing protocol check. @see: http://stackoverflow.com/a/22152353/1958200
-  ga('set', 'appVersion', chrome.runtime.getManifest());
+  ga('set', 'appVersion', chrome.runtime.getManifest().version);
   ga('require', 'displayfeatures');
   ga('send', 'pageview', pageviewName);
 }

@@ -1,5 +1,7 @@
 'use strict';
 
+const {loadGoogleAnalytics} = require('./google-analytics.js');
+
 const { LatLon,
         RouteCoordinates,
         DataFromStatement,
@@ -242,10 +244,9 @@ function logToGoogleAnalytics(dataFromStatement, dataFromGoogle) {
   let percentDiff = calculatePercentDiff(dataFromStatement, dataFromGoogle);
   let oldPercentDiffCalculation = (dataFromGoogle.actualDistanceFloatMi - dataFromStatement.uberPaidForFloatMi) / dataFromGoogle.actualDistanceFloatMi
   let absoluteDifferenceTimes100 = Math.round((dataFromGoogle.actualDistanceFloatMi - dataFromStatement.uberPaidForFloatMi) * 100);
-  ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', absoluteDifferenceTimes100);
-  ga('send', 'event', 'fairness', 'percentDifference', Math.round(oldPercentDiffCalculation * 100));
-  ga('send', 'event', 'fairness', 'percentDifferenceCorrected', Math.round(percentDiff * 100));
-
+  ga('send', 'event', 'fairness', 'absoluteDifferenceTimes100', String(absoluteDifferenceTimes100));
+  ga('send', 'event', 'fairness', 'percentDifference', String(Math.round(oldPercentDiffCalculation * 100)));
+  ga('send', 'event', 'fairness', 'percentDifferenceCorrected', String(Math.round(percentDiff * 100)));
 
   // Use the custom metrics
   ga('set', 'metric1', absoluteDifferenceTimes100);
@@ -411,6 +412,8 @@ function handleErrorsFromContentScript(msgDestination, returnValue) {
 
 // Runs the end-to-end cheat detector for a single trip
 function runCheatDetectorOnTrip(msgDestination) {
+  loadGoogleAnalytics('on-trip');
+
   chrome.tabs.executeScript(
       msgDestination.tabId,
       {
@@ -432,6 +435,8 @@ function runCheatDetectorOnTrip(msgDestination) {
 
 // Runs the end-to-end cheat detector for a single trip
 function runCheatDetectorOnStatement(msgDestination) {
+  loadGoogleAnalytics('on-statement');
+
   chrome.tabs.executeScript(
       msgDestination.tabId,
       {

@@ -1,7 +1,6 @@
 'use strict';
 
 const bg = require('./background-functions.js');
-const {loadGoogleAnalytics} = require('./google-analytics.js');
 
 var isGoogleAPILoaded = false;
 
@@ -16,16 +15,14 @@ window.googleApiIsLoaded = googleApiIsLoaded; // otherwise google callback can't
 // Adds the Google Maps API script to the <head> tag to load it
 function addScriptTagToHead() {
   // Create the script tag, set the appropriate attributes
-  let script = document.createElement('script');
+  const mapScript = document.createElement('script');
   let minifiedCallbackName = googleApiIsLoaded.name;
-  script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA3ZbHa1nT0-WgfiY6HG11Lw2JhT4q3nFA&callback=googleApiIsLoaded'
-  script.defer = true;
-  
-  // Append the 'script' element to 'head'
-  document.head.appendChild(script);
-}
+  mapScript.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA3ZbHa1nT0-WgfiY6HG11Lw2JhT4q3nFA&callback=googleApiIsLoaded'
+  mapScript.defer = true;
 
-loadGoogleAnalytics('background');
+  // Append the 'script' element to 'head'
+  document.head.appendChild(mapScript);
+}
 
 var listeners = [
     {
