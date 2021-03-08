@@ -1,4 +1,3 @@
-const {loadGoogleAnalytics} = require('./google-analytics.js');
 const {migrateToLatest} = require('./models.js');
 
 // Sets the status text and class

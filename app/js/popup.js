@@ -1,4 +1,3 @@
-const {loadGoogleAnalytics} = require('./google-analytics.js');
 const popup = require('./popup-functions.js');
 
 chrome.storage.local.get('hidereleasenotes_v0.55', function(data) {
@@ -26,6 +25,5 @@ window.onload = function() {
   });
 };
 
-loadGoogleAnalytics('popup');
 document.getElementById('summaryButton').addEventListener('click', popup.showSummary);
 document.getElementById('hideReleaseNotesButton').addEventListener('click', popup.hideReleaseNotes);
