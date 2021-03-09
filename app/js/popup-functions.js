@@ -107,10 +107,6 @@ function generateTableForEntries(entries) {
     }, 0) / entries.length;
     let roundedSumUnderpayments = Math.round(sumUnderpayments*100.0)/100.0;
 
-    // Send to GA
-    ga('set', 'dimension1', Math.round(pctUnderpaid*100));
-    ga('set', 'dimension2', Math.round(roundedSumUnderpayments));
-
     // Table header
     let html = 'This table only shows statements you\'ve already clicked on. Populate this table by clicking on each statement, as per the <a href="https://www.youtube.com/watch?v=1k2YYlb21N8">tutorial</a>.<br/><br/>'
     html += `Have a lot of red values in this summary? Let us know! Share your story on <a href="${helpUrlReddit}" target=\"_blank\">Reddit</a> or <a href="${helpUrlTwitter}" target=\"_blank\">Twitter</a><br/><br/>`
